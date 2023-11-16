@@ -18,11 +18,6 @@ defmodule D3flSimulator.MockSim do
               node_down_bandwidth: @lnum
   end
 
-  # 計算機ノード
-  defmodule ComputerNode do
-
-  end
-
   # ネットワーク
   defmodule Network do
 
@@ -35,11 +30,6 @@ defmodule D3flSimulator.MockSim do
                 waiting_sender_list: [],
                 available_node_list: []
     end
-
-  end
-
-  # チャンネル
-  defmodule NetworkChannel do
 
   end
 
