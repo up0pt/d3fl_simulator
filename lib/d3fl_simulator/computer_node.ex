@@ -1,4 +1,5 @@
 defmodule D3flSimulator.ComputerNode do
+  require Logger
   use GenServer
   alias D3flSimulator.Utils
 
@@ -36,10 +37,10 @@ defmodule D3flSimulator.ComputerNode do
     comm_avail
   end
 
-  def send_model(model, recv_node_index) do
-    GenServer.cast(
-      Utils.get_process_name(__MODULE__, recv_node_index),
-      {:recv_model, model}
+  def send_model(send_node_index, recv_node_index) do
+    GenServer.call(
+      Utils.get_process_name(__MODULE__, send_node_index),
+      {:send_model, recv_node_index}
       )
   end
 
@@ -53,7 +54,9 @@ defmodule D3flSimulator.ComputerNode do
       :get_info)
   end
 
-  def handle_call(:get_info, _from, state) do
+  def handle_call(:get_info, _from, %State{recv_model_queue: recv_queue} = state) do
+    {{_, value}, _} = :queue.out(recv_queue)
+    Logger.info(value)
     {:reply, state, state}
   end
 
@@ -61,7 +64,16 @@ defmodule D3flSimulator.ComputerNode do
     {:reply, comm_avail, state}
   end
 
-  def handle_cast({:recv_model, model}, _from, %State{recv_model_queue: queue} = state) do
-    {:noreply, %State{state | recv_model_queue: :queue.in(model, queue)}}
+  def handle_call({:send_model, recv_node_index}, _from, %State{model: sending_model, node_id: send_node_index} = state) do
+    GenServer.call(
+      Utils.get_process_name(__MODULE__, recv_node_index),
+      {:recv_model, send_node_index, sending_model}
+      )
+    {:reply, state, state}
+  end
+
+  def handle_call({:recv_model, _send_node_index, model}, _from,  %State{recv_model_queue: queue} = state) do
+    queue = :queue.in(model, queue)
+    {:reply, state, %State{state | recv_model_queue: queue}}
   end
 end
