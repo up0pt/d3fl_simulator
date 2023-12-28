@@ -24,3 +24,5 @@ d3fl_simulator-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+sample*
