@@ -1,5 +1,4 @@
 defmodule D3flSimulator.MockSim do
-  @lnum 1000
 
   # ネットワーク経由で計算機ノード同士がやりとりするデータ
   defmodule CommunicationData do

@@ -1,10 +1,11 @@
 defmodule D3flSimulator.Channel do
   use GenServer
   alias D3flSimulator.Utils
+  alias D3flSimulator.ComputerNode
 
   defmodule InputQoS do
-    defstruct send_node: 0,
-              recv_node: 0,
+    defstruct send_node_id: 0,
+              recv_node_id: 0,
               uptime: 1_000,
               jitter: 0,
               latency: 0,
@@ -19,11 +20,11 @@ defmodule D3flSimulator.Channel do
               queue: nil
   end
 
-  def start_link({channel_index, %InputQoS{} = _inputQoS} = arg_tuples) do
+  def start_link({_channel_index, %InputQoS{send_node_id: from_id, recv_node_id: to_id} = _inputQoS} = arg_tuples) do
     GenServer.start_link(
       __MODULE__,
       arg_tuples,
-      name: Utils.get_process_name(__MODULE__, channel_index)
+      name: Utils.get_process_name_from_to(__MODULE__, from_id, to_id)
       )
   end
 
@@ -38,5 +39,50 @@ defmodule D3flSimulator.Channel do
     }
   end
 
+  def transfer_model(from_node_index, to_node_index, sending_model) do
+    GenServer.call(
+      Utils.get_process_name_from_to(__MODULE__, from_node_index, to_node_index),
+      {:transfer_model, from_node_index, to_node_index, sending_model}
+    )
+  end
 
+  @doc """
+  ネットワーク品質の反映を行う関数
+  """
+  def affect_transfer(from_node_index,
+                      to_node_index,
+                      sending_model,
+                      %State{
+                        inputQoS: %InputQoS{
+                          latency: latency,
+                          packetloss: packetloss
+                        }
+                        } = _state) do
+    Process.sleep(latency) # sleep for latency (in millisecond)
+    new_model = loss_packet(packetloss, sending_model)
+    ComputerNode.recv_model(to_node_index, from_node_index, new_model)
+  end
+
+  def loss_packet(packetloss, model) do
+    random_number = :rand.uniform()
+    if random_number <= packetloss do
+      nil
+    else
+      model
+    end
+  end
+
+  def handle_call({:transfer_model,
+                  from_node_index,
+                  to_node_index,
+                  sending_model},
+                  _from,
+                  state) do
+    affect_transfer(from_node_index,
+                    to_node_index,
+                    sending_model,
+                    state)
+    {:reply, nil, state}
+    # まだChannelのqueueはいじっていない
+  end
 end
