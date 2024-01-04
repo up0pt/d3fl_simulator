@@ -1,9 +1,9 @@
-defmodule D3flSimulator.ComputerNode.AiCore do
+defmodule D3flSimulator.CalculatorNode.AiCore do
   def train_model() do
-
+    NxSample.train()
   end
 
-  def weighted_mean_model(map_a, map_b, rate_b) do
+  def weighted_mean_model(map_a, map_b, rate_b \\ 1) do
     keys = Map.keys(map_a)
     result_map = %{}
     result_map = Enum.map(keys, fn key ->

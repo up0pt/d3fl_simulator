@@ -1,15 +1,17 @@
-defmodule D3flSimulator.ComputerNode do
+defmodule D3flSimulator.CalculatorNode do
   require Logger
   use GenServer
   alias D3flSimulator.Utils
   alias D3flSimulator.Channel
+  alias D3flSimulator.CalculatorNode.AiCore
 
   defmodule State do
     defstruct node_id: nil,
               model: nil,
               data: nil,
               comm_available: true,
-              recv_model_queue: :queue.new
+              recv_model_queue: :queue.new,
+              former_model_queue: :queue.new
   end
   #TODO:  計算available, 測定などを足す
 
@@ -36,6 +38,13 @@ defmodule D3flSimulator.ComputerNode do
       :check_comm_avail
     )
     comm_avail
+  end
+
+  def train(node_index) do
+    GenServer.cast(
+      Utils.get_process_name(__MODULE__, node_index),
+      {:train, node_index}
+    )
   end
 
   def send_model(send_node_index, recv_node_index) do
@@ -85,6 +94,14 @@ defmodule D3flSimulator.ComputerNode do
   #   new_queue = :queue.in(model, queue)
   #   {:reply, :ok, %State{state | recv_model_queue: new_queue}}
   # end
+
+  def handle_cast({:train, _node_index}, %State{model: former_model, former_model_queue: fmodel_queue} = state) do
+    new_fmodel_queue = :queue.in(former_model, fmodel_queue)
+    new_model = AiCore.train_model()
+    # 受け取ったモデルをaggregateして，あるいはそのままで初期値に利用する仕組みはまだ作っていない．
+    {:noreply, %State{state | model: new_model, former_model_queue: new_fmodel_queue}}
+  end
+
 
   def handle_cast({:send_model, recv_node_index}, %State{model: sending_model, node_id: send_node_index} = state) do
     GenServer.cast(
