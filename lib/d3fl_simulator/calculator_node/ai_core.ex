@@ -1,6 +1,6 @@
 defmodule D3flSimulator.CalculatorNode.AiCore do
-  def train_model() do
-    NxSample.train()
+  def train_model(former_model) do
+    NxSample.train(former_model)
   end
 
   def weighted_mean_model(map_a, map_b, rate_b \\ 1) do
