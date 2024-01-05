@@ -7,7 +7,7 @@ defmodule D3flSimulator.CalculatorNode do
 
   defmodule State do
     defstruct node_id: nil,
-              model: nil,
+              model: %{},
               data: nil,
               comm_available: true,
               recv_model_queue: :queue.new,
@@ -95,9 +95,13 @@ defmodule D3flSimulator.CalculatorNode do
   #   {:reply, :ok, %State{state | recv_model_queue: new_queue}}
   # end
 
-  def handle_cast({:train, _node_index}, %State{model: former_model, former_model_queue: fmodel_queue} = state) do
+  def handle_cast({:train, _node_index}, %State{model: former_model, former_model_queue: fmodel_queue, recv_model_queue: rmodel_queue} = state) do
     new_fmodel_queue = :queue.in(former_model, fmodel_queue)
-    new_model = AiCore.train_model()
+    # aggregationの一例
+    # recv_model = :queue.out(rmodel_queue)
+    # base_model = AiCore.weighted_mean_model(former_model, recv_model, 1)
+    # new_model = AiCore.train_model(base_model)
+    new_model = AiCore.train_model(former_model)
     # 受け取ったモデルをaggregateして，あるいはそのままで初期値に利用する仕組みはまだ作っていない．
     {:noreply, %State{state | model: new_model, former_model_queue: new_fmodel_queue}}
   end
