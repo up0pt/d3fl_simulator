@@ -3,14 +3,26 @@ defmodule D3flSimulator.CalculatorNode.AiCore do
     NxSample.train(former_model)
   end
 
-  def weighted_mean_model(map_a, nil, _rate_b) do
+  def weighted_mean_model(map_a, nil, _) do
     map_a
+  end
+
+  def weighted_mean_model(nil, map_b, _) do
+    map_b
+  end
+
+  def weighted_mean_model(map_a, %{}, _) do
+    map_a
+  end
+
+  def weighted_mean_model(%{}, map_b, _) do
+    map_b
   end
 
   def weighted_mean_model(map_a, map_b, rate_b) do
     keys = Map.keys(map_a)
     result_map = %{}
-    result_map = Enum.map(keys, fn key ->
+    [result_map] = Enum.map(keys, fn key ->
       value_a = Map.get(map_a, key)
       v_a_bias = Map.get(value_a, "bias")
       v_a_kernel = Map.get(value_a, "kernel")
