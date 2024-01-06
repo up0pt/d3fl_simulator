@@ -10,7 +10,7 @@ defmodule D3flSimulator.MockSim do
   end
 
   # 計算機ノードが通信・チャンネル管理に与える通信状態データ
-  defmodule ComputerNodeCommState do
+  defmodule CalculatorNodeCommState do
     @lnum 1000
     defstruct comm_available: false,
               node_up_bandwidth: @lnum,

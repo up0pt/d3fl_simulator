@@ -1,7 +1,7 @@
 defmodule D3flSimulator.Channel do
   use GenServer
   alias D3flSimulator.Utils
-  alias D3flSimulator.ComputerNode
+  alias D3flSimulator.CalculatorNode
 
   defmodule InputQoS do
     defstruct send_node_id: 0,
@@ -60,7 +60,7 @@ defmodule D3flSimulator.Channel do
                         } = _state) do
     Process.sleep(latency) # sleep for latency (in millisecond)
     new_model = loss_packet(packetloss, sending_model)
-    ComputerNode.recv_model(to_node_index, from_node_index, new_model)
+    CalculatorNode.recv_model(to_node_index, from_node_index, new_model)
   end
 
   def loss_packet(packetloss, model) do
