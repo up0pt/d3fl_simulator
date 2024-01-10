@@ -1,23 +1,38 @@
 defmodule D3flSimulator.CalculatorNode.AiCore do
+  use GenServer
+  alias D3flSimulator.Utils
+
+  defmodule State do
+    defstruct node_id: nil,
+              calc_available: true
+  end
+
+  def start_link(%{node_index: node_id} = arg_map) do
+    GenServer.start_link(
+      __MODULE__,
+      arg_map,
+      name: Utils.get_process_name(__MODULE__, node_id)
+    )
+  end
+
+  def init(%{node_index: node_id} = _arg_map) do
+    {:ok,
+    %State{
+      node_id: node_id
+    }}
+  end
+
   def train_model(former_model) do
     NxSample.train(former_model)
   end
 
-  def weighted_mean_model(map_a, nil, _) do
-    map_a
-  end
+  def weighted_mean_model(map_a, map_b, _)
+      when map_b == nil or map_b == %{},
+      do: map_a
 
-  def weighted_mean_model(nil, map_b, _) do
-    map_b
-  end
-
-  def weighted_mean_model(map_a, %{}, _) do
-    map_a
-  end
-
-  def weighted_mean_model(%{}, map_b, _) do
-    map_b
-  end
+  def weighted_mean_model(map_a, map_b, _)
+      when map_a == nil or map_a == %{},
+      do: map_b
 
   def weighted_mean_model(map_a, map_b, rate_b) do
     keys = Map.keys(map_a)

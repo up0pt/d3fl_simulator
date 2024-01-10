@@ -16,6 +16,7 @@ defmodule D3flSimulator.CalculatorNode do
   #TODO:  計算available, 測定などを足す
 
   def start_link({_, _, node_index} = args_tuple) do
+    #TODO: 引数を構造体にする or Mapにする
     GenServer.start_link(
       __MODULE__,
       args_tuple,
