@@ -20,6 +20,8 @@ defmodule MockHelper do
     CalculatorNode.train(3)
     Process.sleep(10000)
 
+
+    Channel.change_input_latency(%{send_node_id: 3, recv_node_id: 2, latency: 5})
     CalculatorNode.send_model_via_ch(1, 2)
     CalculatorNode.send_model_via_ch(3, 2)
     CalculatorNode.send_model_via_ch(2, 1)
