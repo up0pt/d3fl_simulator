@@ -27,6 +27,10 @@ defmodule D3flSimulator.CalculatorNode.AiCore do
   end
 
   def weighted_mean_model(map_a, map_b, _)
+      when map_a == nil and map_b == nil,
+      do: %{}
+
+  def weighted_mean_model(map_a, map_b, _)
       when map_b == nil or map_b == %{},
       do: map_a
 
