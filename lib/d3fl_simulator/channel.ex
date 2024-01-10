@@ -72,10 +72,17 @@ defmodule D3flSimulator.Channel do
     end
   end
 
-  def change_input_latency(%{send_node_id: from_node_index, recv_node_id: to_node_index, latency: latency}) do
+  def change_inputQoS(%InputQoS{send_node_id: from_node_index, recv_node_id: to_node_index} = inputQoS) do
     GenServer.cast(
       Utils.get_process_name_from_to(__MODULE__, from_node_index, to_node_index),
-      {:change_Input_latency, latency}
+      {:change_InputQoS, inputQoS}
+    )
+  end
+
+  def get_info(from_node_id, to_node_id) do
+    GenServer.call(
+      Utils.get_process_name_from_to(__MODULE__, from_node_id, to_node_id),
+      {:get_info}
     )
   end
 
@@ -94,10 +101,21 @@ defmodule D3flSimulator.Channel do
     # 理想的には，まずqueueに入れて，一定時間おきにpopしてaffect_transfer？
   end
 
-  def handle_cast({:change_Input_latency,
-                  latency_input},
+  def handle_call({:get_info}, _from, %State{inputQoS: inputQoS} = state) do
+    IO.inspect(inputQoS)
+    {:reply, nil, state}
+  end
+
+  def handle_cast({:change_InputQoS,
+                  inputQoS},
                   %State{inputQoS: former_inputQoS} = state) do
-    new_inputQoS = %InputQoS{former_inputQoS | latency: latency_input}
+    former_inputQoS_map = Map.from_struct(former_inputQoS)
+    inputQoS_map = Map.from_struct(inputQoS)
+
+    updated_inputQoS_map = Enum.reduce(inputQoS_map, former_inputQoS_map, fn {key, value}, acc_map ->
+      Map.update(acc_map, key, value, fn _existing_value -> value end)
+    end)
+    new_inputQoS = struct(InputQoS, updated_inputQoS_map)
     {:noreply, %State{state | inputQoS: new_inputQoS}}
   end
 end
