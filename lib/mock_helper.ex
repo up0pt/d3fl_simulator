@@ -20,6 +20,9 @@ defmodule MockHelper do
     CalculatorNode.train(3)
     Process.sleep(10000)
 
+
+    Channel.change_inputQoS(%InputQoS{send_node_id: 3, recv_node_id: 2, latency: 5})
+    Channel.get_info(3, 2)
     CalculatorNode.send_model_via_ch(1, 2)
     CalculatorNode.send_model_via_ch(3, 2)
     CalculatorNode.send_model_via_ch(2, 1)
