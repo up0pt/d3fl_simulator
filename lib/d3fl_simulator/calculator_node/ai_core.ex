@@ -26,17 +26,23 @@ defmodule D3flSimulator.CalculatorNode.AiCore do
     NxSample.train(former_model)
   end
 
-  def weighted_mean_model(map_a, map_b, _)
-      when map_a == nil and map_b == nil,
-      do: %{}
+  def weighted_mean_model(map_a, nil, _) do
+    map_a
+  end
 
-  def weighted_mean_model(map_a, map_b, _)
-      when map_b == nil or map_b == %{},
-      do: map_a
+  def weighted_mean_model(nil, map_b, _) do
+    map_b
+  end
 
-  def weighted_mean_model(map_a, map_b, _)
-      when map_a == nil or map_a == %{},
-      do: map_b
+  def weighted_mean_model(map_a, %{}, _) do
+    map_a
+  end
+
+  def weighted_mean_model(%{}, map_b, _) do
+    map_b
+  end
+
+  # the above codes would make a bug (when both map_a & map_b are nil)
 
   def weighted_mean_model(map_a, map_b, rate_b) do
     keys = Map.keys(map_a)
