@@ -22,8 +22,20 @@ defmodule D3flSimulator.CalculatorNode.AiCore do
     }}
   end
 
-  def train_model(former_model) do
-    NxSample.train(former_model)
+  def model_aggregate(node_id, former_model, new_model, rate) do
+    GenServer.call(
+      Utils.get_process_name(__MODULE__, node_id),
+      {:aggregate, former_model, new_model, rate},
+      :infinity
+    )
+  end
+
+  def train_model(node_id, former_model) do
+    GenServer.call(
+      Utils.get_process_name(__MODULE__, node_id),
+      {:train, former_model},
+      :infinity
+    )
   end
 
   def weighted_mean_model(map_a, nil, _) do
@@ -70,4 +82,19 @@ defmodule D3flSimulator.CalculatorNode.AiCore do
     end)
     result_map
   end
+
+  def handle_call({:aggregate, former_model, new_model, rate},
+                  _from,
+                  state)  do
+    model = weighted_mean_model(former_model, new_model, rate)
+    {:reply, model, state}
+  end
+
+  def handle_call({:train, former_model},
+                  _from,
+                  state) do
+    model = NxSample.train(former_model)
+    {:reply, model, state}
+  end
+
 end

@@ -25,6 +25,12 @@ defmodule D3flSimulator.CalculatorNode do
   end
 
   def init({model, data, node_id}) do
+    children = [
+      {AiCore, %{node_index: node_id}}
+    ]
+    opts = [strategy: :one_for_one]
+    {:ok, _id} = Supervisor.start_link(children, opts)
+
     {:ok,
     %State{
       node_id: node_id,
@@ -103,13 +109,13 @@ defmodule D3flSimulator.CalculatorNode do
   #   {:reply, :ok, %State{state | recv_model_queue: new_queue}}
   # end
 
-  def handle_cast({:train, _node_index}, %State{model: former_model, former_model_queue: fmodel_queue, recv_model_queue: rmodel_queue} = state) do
+  def handle_cast({:train, node_index}, %State{model: former_model, former_model_queue: fmodel_queue, recv_model_queue: rmodel_queue} = state) do
     new_fmodel_queue = :queue.in(former_model, fmodel_queue)
     # aggregationの一例
     {{:value, recv_model}, rmodel_queue} = queue_out(rmodel_queue)
     base_model = AiCore.weighted_mean_model(former_model, recv_model, 1)
     # TODO: AiCore(weighted_mean_model) に rmodel_queue 全体を渡した方がいい．
-    new_model = AiCore.train_model(base_model)
+    new_model = AiCore.train_model(node_index, base_model)
     # new_model = AiCore.train_model(former_model)
     {:noreply, %State{state | model: new_model, former_model_queue: new_fmodel_queue, recv_model_queue: rmodel_queue}}
   end
