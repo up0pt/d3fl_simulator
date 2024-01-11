@@ -8,6 +8,9 @@ defmodule D3flSimulator.CalculatorNode do
   defmodule State do
     defstruct node_id: nil,
               model: %{},
+              model_size: 0,
+              model_train_time: 0,
+              model_inference_time: 0,
               data: nil,
               comm_available: true,
               recv_model_queue: :queue.new,
