@@ -12,10 +12,11 @@ defmodule D3flSimulator.JobTilesExecutor do
   end
 
   defmodule JobTile do
-    @enforce_key [:task, :wait_time_out]
+    @enforce_key [:task, :wall_clock_time_span, :wait_time_out]
     defstruct task: nil,
               feasible_start_time: 0.0, # 0.0 means this task is done when poped
               dependent_task_list: [], #TODO: add dependency resolution mechanism
+              wall_clock_time_span: 1, # how long the task take in wall clock time
               wait_time_out: 5_000
   end
 
@@ -67,6 +68,15 @@ defmodule D3flSimulator.JobTilesExecutor do
     end
   end
 
+  defp wait_message do
+    receive do
+      {:message, content} ->
+        IO.puts("Received message: #{content}")
+      {:other_message} ->
+        IO.puts("Received other message")
+    end
+  end
+
   def exec(node_index) do
     GenServer.call(
       Utils.get_process_name(__MODULE__, node_index),
@@ -79,8 +89,12 @@ defmodule D3flSimulator.JobTilesExecutor do
     {:reply, :ok, %State{state | job_tile_queue: queue}}
   end
 
-  def handle_call(:exec, _from, %State{job_tile_queue: queue, sim_wall_clock_rate: time_rate} = state) do
-
+  def handle_call(:exec, _from,
+                  %State{
+                    node_id: node_id,
+                    job_tile_queue: queue,
+                    sim_wall_clock_rate: time_rate
+                  } = state) do
 
     {{:value, jobtile}, queue} = queue_out(queue)
 
@@ -88,14 +102,12 @@ defmodule D3flSimulator.JobTilesExecutor do
       task: task,
       feasible_start_time: f_start_time,
       dependent_task_list: task_list,
+      wall_clock_time_span: wc_span,
       wait_time_out: w_time_out
     } = jobtile
 
-    #TODO: add the codes like this;
-    # if f_start_time < wall_clock_time
-    # then sleep(f_start_time - wall_clock_time)
-    #
-    # while task_list ~~~
+    Timer.start_timer(node_id, wc_span, time_rate)
+
     #TODO: task_list が空になったら...のロジックの整備．このままだと無理
     result = task.() # exec task
     case result do
@@ -103,6 +115,9 @@ defmodule D3flSimulator.JobTilesExecutor do
       {:error, reason} ->
         IO.puts("Error from server: #{reason}")
     end
+
+    wait_message()
+
     #TODO: task はほとんどGenserver.callにする．
     # 理由は，うまくいったか行かないかを知り，タイムアウトも作動させたいから
     {:reply, :ok, %State{state | job_tile_queue: queue}}

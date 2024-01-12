@@ -30,11 +30,13 @@ defmodule WcMockHelper do
                 {:ok, nil}
                 end,
           feasible_start_time: 0.0,
+          wall_clock_time_span: 3,
           wait_time_out: 5_000
         },
         %JobTile{
           task: fn -> CalculatorNode.train(1) end,
           feasible_start_time: 0.0,
+          wall_clock_time_span: 20_000,
           wait_time_out: 5_000
         },
         %JobTile{
@@ -42,6 +44,7 @@ defmodule WcMockHelper do
                 {:ok, nil}
                 end,
           feasible_start_time: 0.0,
+          wall_clock_time_span: 3,
           wait_time_out: 5_000
         }
       ]
