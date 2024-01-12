@@ -19,7 +19,7 @@ defmodule D3flSimulator.JobTilesExecutor do
 
   def start_link(%{node_num: num}) when is_integer(num) and num > 0 do
     Enum.each(
-      0..num-1,
+      1..num,
       fn node_id -> GenServer.start_link(
         __MODULE__,
         node_id,
@@ -86,7 +86,9 @@ defmodule D3flSimulator.JobTilesExecutor do
     # while task_list ~~~
     #TODO: task_list が空になったら...のロジックの整備．このままだと無理
     task.() # exec task
-
+    #TODO: task はほとんどGenserver.callにする．
+    # 理由は，うまくいったか行かないかを知り，タイムアウトも作動させたい
+    Process.
     {:reply, :ok, %State{state | job_tile_queue: queue}}
   end
 end
