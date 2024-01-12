@@ -18,8 +18,7 @@ defmodule D3flSimulator.CalculatorNode do
   end
   #TODO:  計算available, 測定などを足す
 
-  def start_link({_, _, node_index} = args_tuple) do
-    #TODO: 引数を構造体にする or Mapにする
+  def start_link(%{node_index: node_index} = args_tuple) do
     GenServer.start_link(
       __MODULE__,
       args_tuple,
@@ -27,7 +26,7 @@ defmodule D3flSimulator.CalculatorNode do
     )
   end
 
-  def init({model, data, node_id}) do
+  def init(%{model: model, data: data, node_index: node_id}) do
     children = [
       {AiCore, %{node_index: node_id}}
     ]

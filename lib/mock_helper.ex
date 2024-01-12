@@ -7,9 +7,9 @@ defmodule MockHelper do
 
   @spec start_mock() :: :ok
   def start_mock() do
-    CalculatorNode.start_link({%{}, "b", 1})
-    CalculatorNode.start_link({%{}, "d", 2})
-    CalculatorNode.start_link({%{}, "f", 3})
+    CalculatorNode.start_link(%{model: %{}, data: "b", node_index: 1})
+    CalculatorNode.start_link(%{model: %{}, data: "d", node_index: 2})
+    CalculatorNode.start_link(%{model: %{}, data: "f", node_index: 3})
 
     Channel.start_link({0, %InputQoS{send_node_id: 1, recv_node_id: 2, latency: 0, packetloss: 1}})
     Channel.start_link({1, %InputQoS{send_node_id: 3, recv_node_id: 2, latency: 0}})
