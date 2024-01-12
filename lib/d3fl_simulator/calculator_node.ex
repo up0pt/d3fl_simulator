@@ -57,10 +57,12 @@ defmodule D3flSimulator.CalculatorNode do
   end
 
   def train(node_index) do
-    GenServer.cast(
+    GenServer.call(
       Utils.get_process_name(__MODULE__, node_index),
-      {:train, node_index}
+      {:train, node_index},
+      600_000
     )
+    {:ok, nil}
   end
 
   def send_model(send_node_index, recv_node_index) do
@@ -111,15 +113,14 @@ defmodule D3flSimulator.CalculatorNode do
   #   {:reply, :ok, %State{state | recv_model_queue: new_queue}}
   # end
 
-  def handle_cast({:train, node_index}, %State{model: former_model, former_model_queue: fmodel_queue, recv_model_queue: rmodel_queue} = state) do
+  def handle_call({:train, node_index}, _from,  %State{model: former_model, former_model_queue: fmodel_queue, recv_model_queue: rmodel_queue} = state) do
     new_fmodel_queue = :queue.in(former_model, fmodel_queue)
     # aggregationの一例
     {{:value, recv_model}, rmodel_queue} = queue_out(rmodel_queue)
     base_model = AiCore.weighted_mean_model(former_model, recv_model, 1)
     # TODO: AiCore(weighted_mean_model) に rmodel_queue 全体を渡した方がいい．
     new_model = AiCore.train_model(node_index, base_model)
-    # new_model = AiCore.train_model(former_model)
-    {:noreply, %State{state | model: new_model, former_model_queue: new_fmodel_queue, recv_model_queue: rmodel_queue}}
+    {:reply, :ok, %State{state | model: new_model, former_model_queue: new_fmodel_queue, recv_model_queue: rmodel_queue}}
   end
 
 

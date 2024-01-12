@@ -26,7 +26,9 @@ defmodule WcMockHelper do
     jt_q_1 = init_q_list(
       [
         %JobTile{
-          task: fn -> IO.puts("node 1 task 1") end,
+          task: fn -> IO.puts("node 1 task 1")
+                {:ok, nil}
+                end,
           feasible_start_time: 0.0,
           wait_time_out: 5_000
         },
@@ -36,7 +38,9 @@ defmodule WcMockHelper do
           wait_time_out: 5_000
         },
         %JobTile{
-          task: fn -> IO.puts("node 1 task 3") end,
+          task: fn -> IO.puts("node 1 task 3")
+                {:ok, nil}
+                end,
           feasible_start_time: 0.0,
           wait_time_out: 5_000
         }

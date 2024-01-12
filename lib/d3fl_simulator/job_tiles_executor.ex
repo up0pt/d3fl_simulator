@@ -56,7 +56,9 @@ defmodule D3flSimulator.JobTilesExecutor do
     case :queue.len(job_tile_queue) do
       0 -> {{:value,
             %JobTile{
-              task: fn -> IO.puts("executor is empty") end,
+              task: fn -> IO.puts("executor is empty")
+                    {:ok, nil}
+                    end,
               wait_time_out: 5_000
               }
             },
