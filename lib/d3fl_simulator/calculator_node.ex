@@ -14,7 +14,8 @@ defmodule D3flSimulator.CalculatorNode do
               data: nil,
               comm_available: true,
               recv_model_queue: :queue.new,
-              former_model_queue: :queue.new
+              former_model_queue: :queue.new,
+              eval_metrics_queue: :queue.new
   end
   #TODO:  計算available, 測定などを足す
 
@@ -74,7 +75,7 @@ defmodule D3flSimulator.CalculatorNode do
 
   @spec send_model_via_ch(integer(), integer()) :: :ok
   def send_model_via_ch(send_node_index, recv_node_index) do
-    GenServer.cast(
+    GenServer.call(
       # Utils.get_process_name_from_to("Channel", send_node_index, recv_node_index),
       Utils.get_process_name(__MODULE__, send_node_index),
       {:send_model_via_ch, recv_node_index}
@@ -113,14 +114,42 @@ defmodule D3flSimulator.CalculatorNode do
   #   {:reply, :ok, %State{state | recv_model_queue: new_queue}}
   # end
 
-  def handle_call({:train, node_index}, _from,  %State{model: former_model, former_model_queue: fmodel_queue, recv_model_queue: rmodel_queue} = state) do
+  def handle_call({:train, node_index},
+                  _from,
+                  %State{
+                    model: former_model,
+                    former_model_queue: fmodel_queue,
+                    recv_model_queue: rmodel_queue,
+                    eval_metrics_queue: eval_queue
+                    } = state) do
+
     new_fmodel_queue = :queue.in(former_model, fmodel_queue)
     # aggregationの一例
     {{:value, recv_model}, rmodel_queue} = queue_out(rmodel_queue)
     base_model = AiCore.weighted_mean_model(former_model, recv_model, 1)
     # TODO: AiCore(weighted_mean_model) に rmodel_queue 全体を渡した方がいい．
-    new_model = AiCore.train_model(node_index, base_model)
-    {:reply, :ok, %State{state | model: new_model, former_model_queue: new_fmodel_queue, recv_model_queue: rmodel_queue}}
+    {new_model, metrics}= AiCore.train_model(node_index, base_model)
+    new_eval_metrics_queue = :queue.in(metrics, eval_queue)
+
+    {:reply,
+     :ok,
+     %State{
+      state | model: new_model,
+      former_model_queue: new_fmodel_queue,
+      recv_model_queue: rmodel_queue,
+      eval_metrics_queue: new_eval_metrics_queue},
+    }
+  end
+
+  def handle_call({:send_model_via_ch, recv_node_index},
+                  _from,
+                  %State{
+                    model: sending_model,
+                    node_id: send_node_index
+                    } = state) do
+
+    Channel.transfer_model(send_node_index, recv_node_index, sending_model)
+    {:reply, :ok, state}
   end
 
 
@@ -136,10 +165,5 @@ defmodule D3flSimulator.CalculatorNode do
     # TODO: from_node_index と model を一緒に保持させる
     new_queue = :queue.in(model, queue)
     {:noreply, %State{state | recv_model_queue: new_queue}}
-  end
-
-  def handle_cast({:send_model_via_ch, recv_node_index}, %State{model: sending_model, node_id: send_node_index} = state) do
-    Channel.transfer_model(send_node_index, recv_node_index, sending_model)
-    {:noreply, state}
   end
 end

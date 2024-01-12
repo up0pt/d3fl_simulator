@@ -60,6 +60,7 @@ defmodule D3flSimulator.JobTilesExecutor do
               task: fn -> IO.puts("executor is empty")
                     {:ok, nil}
                     end,
+              wall_clock_time_span: 10_000,
               wait_time_out: 5_000
               }
             },
@@ -71,9 +72,9 @@ defmodule D3flSimulator.JobTilesExecutor do
   defp wait_message do
     receive do
       {:message, content} ->
-        IO.puts("Received message: #{content}")
+        IO.puts("\n Received message: #{content}")
       {:other_message} ->
-        IO.puts("Received other message")
+        IO.puts("\n Received other message")
     end
   end
 
@@ -81,45 +82,53 @@ defmodule D3flSimulator.JobTilesExecutor do
     GenServer.call(
       Utils.get_process_name(__MODULE__, node_index),
       :exec,
-      600_000
+      60_000
     )
   end
 
-  def handle_call({:init_job_tile_queue, queue}, _from, state) do
-    {:reply, :ok, %State{state | job_tile_queue: queue}}
-  end
-
-  def handle_call(:exec, _from,
-                  %State{
-                    node_id: node_id,
-                    job_tile_queue: queue,
-                    sim_wall_clock_rate: time_rate
-                  } = state) do
+  def exec_in_loop(%State{
+                      node_id: node_id,
+                      job_tile_queue: queue,
+                      sim_wall_clock_rate: time_rate
+                    } = state) do
 
     {{:value, jobtile}, queue} = queue_out(queue)
 
     %JobTile{
       task: task,
-      feasible_start_time: f_start_time,
-      dependent_task_list: task_list,
+      feasible_start_time: _f_start_time, # TODO: use this
+      dependent_task_list: _task_list, # TODO: use this
       wall_clock_time_span: wc_span,
-      wait_time_out: w_time_out
+      wait_time_out: _w_time_out # TODO: use this
     } = jobtile
 
     Timer.start_timer(node_id, wc_span, time_rate)
 
     #TODO: task_list が空になったら...のロジックの整備．このままだと無理
     result = task.() # exec task
+
+    #TODO: task はほとんどGenserver.callにする．
+    # 理由は，うまくいったか行かないかを知り，タイムアウトも作動させたいから
     case result do
-      {:ok, response} -> nil
+      {:ok, _response} -> nil
       {:error, reason} ->
         IO.puts("Error from server: #{reason}")
     end
 
     wait_message()
 
-    #TODO: task はほとんどGenserver.callにする．
-    # 理由は，うまくいったか行かないかを知り，タイムアウトも作動させたいから
+    exec_in_loop(%State{state |
+      job_tile_queue: queue
+    })
+  end
+
+  def handle_call({:init_job_tile_queue, queue}, _from, state) do
     {:reply, :ok, %State{state | job_tile_queue: queue}}
+  end
+
+  def handle_call(:exec, _from, state) do
+    exec_in_loop(state)
+    # 現状では無限ループになっているが，job_tiles_queueが空になったらおわってもいい？
+    {:reply, :ok, state}
   end
 end

@@ -50,11 +50,29 @@ defmodule WcMockHelper do
       ]
     )
 
-    JobTilesExecutor.init_job_tile_queue(%{node_id: 1, job_tile_queue: jt_q_1})
+    jt_q_2 = init_q_list(
+      [
+        %JobTile{
+          task: fn -> CalculatorNode.train(2) end,
+          feasible_start_time: 0.0,
+          wall_clock_time_span: 20_000,
+          wait_time_out: 5_000
+        },
+        %JobTile{
+          task: fn -> IO.puts("node 2 task 2")
+                {:ok, nil}
+                end,
+          feasible_start_time: 0.0,
+          wall_clock_time_span: 3,
+          wait_time_out: 5_000
+        }
+      ]
+    )
 
-    JobTilesExecutor.exec(1)
-    JobTilesExecutor.exec(1)
-    JobTilesExecutor.exec(1)
-    JobTilesExecutor.exec(1)
+    JobTilesExecutor.init_job_tile_queue(%{node_id: 1, job_tile_queue: jt_q_1})
+    JobTilesExecutor.init_job_tile_queue(%{node_id: 2, job_tile_queue: jt_q_2})
+
+
+    Enum.each(1..2, fn i -> JobTilesExecutor.exec(i) end)
   end
 end
