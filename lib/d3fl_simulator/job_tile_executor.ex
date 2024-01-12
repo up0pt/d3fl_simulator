@@ -1,5 +1,6 @@
 defmodule D3flSimulator.JobTilesExecutor do
   use GenServer
+  alias D3flSimulator.Utils
 
   defmodule State do
     @enforce_key [:node_id]
@@ -18,16 +19,19 @@ defmodule D3flSimulator.JobTilesExecutor do
 
   def start_link(%{node_num: num}) when is_integer(num) and num > 0 do
     Enum.each(
-      1 ... num,
+      0..num-1,
       fn node_id -> GenServer.start_link(
         __MODULE__,
         node_id,
         name: Utils.get_process_name(__MODULE__, node_id)
       )
+      end
     )
+    IO.puts("start_job_tile_exec")
   end
 
   def init(node_id) do
+    IO.puts("#id #{node_id}: initialized")
     {:ok,
     %State{
       node_id: node_id
@@ -45,7 +49,7 @@ defmodule D3flSimulator.JobTilesExecutor do
     case :queue.len(job_tile_queue) do
       0 -> {{:value,
             %JobTile{
-              task: fn -> IO.puts("executor is empty"),
+              task: fn -> IO.puts("executor is empty") end,
               wait_time_out: 5_000
               }
             },
@@ -83,5 +87,6 @@ defmodule D3flSimulator.JobTilesExecutor do
     #TODO: task_list が空になったら...のロジックの整備．このままだと無理
     task.() # exec task
 
+    {:reply, :ok, %State{state | job_tile_queue: queue}}
   end
 end

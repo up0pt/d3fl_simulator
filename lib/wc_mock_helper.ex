@@ -1,6 +1,7 @@
 defmodule WcMockHelper do
   alias D3flSimulator.WallClock
   alias D3flSimulator.JobTilesExecutor
+  alias D3flSimulator.JobTilesExecutor.JobTile
 
   def init_q_list(elements) do
     queue = :queue.new
@@ -15,25 +16,28 @@ defmodule WcMockHelper do
     jt_q_0 = init_q_list(
       [
         %JobTile{
-          task: fn -> IO.puts("node_0 task 1"),
+          task: fn -> IO.puts("node_0 task 1") end,
           feasible_start_time: 0.0,
           wait_time_out: 5_000
         },
         %JobTile{
-          task: fn -> IO.puts("node_0 task 2"),
+          task: fn -> IO.puts("node_0 task 2") end,
           feasible_start_time: 0.0,
           wait_time_out: 5_000
         },
         %JobTile{
-          task: fn -> IO.puts("node_0 task 3"),
+          task: fn -> IO.puts("node_0 task 3") end,
           feasible_start_time: 0.0,
           wait_time_out: 5_000
-        },
+        }
       ]
     )
 
     JobTilesExecutor.init_job_tile_queue(%{node_id: 0, job_tile_queue: jt_q_0})
 
-    WallClock.start()
+    JobTilesExecutor.exec(0)
+    JobTilesExecutor.exec(0)
+    JobTilesExecutor.exec(0)
+    JobTilesExecutor.exec(0)
   end
 end
