@@ -4,15 +4,14 @@ defmodule D3flSimulator.JobTilesExecutor do
   alias D3flSimulator.JobTilesExecutor.Timer
 
   defmodule State do
-    @enforce_key [:node_id]
     defstruct node_id: nil,
               wall_clock_time: 0.0, # wall clock time
               job_tile_queue: :queue.new,
-              sim_wall_clock_rate: 1
+              sim_wall_clock_rate: 1,
+              from_pid: nil
   end
 
   defmodule JobTile do
-    @enforce_key [:task, :wall_clock_time_span, :wait_time_out]
     defstruct task: nil,
               feasible_start_time: 0.0, # 0.0 means this task is done when poped
               dependent_task_list: [], #TODO: add dependency resolution mechanism
@@ -20,20 +19,20 @@ defmodule D3flSimulator.JobTilesExecutor do
               wait_time_out: 5_000
   end
 
-  def start_link(%{node_num: num}) when is_integer(num) and num > 0 do
+  def start_link(%{node_num: num, from_pid: pid}) when is_integer(num) and num > 0 do
     Enum.each(
       1..num,
       fn node_id ->
       GenServer.start_link(
         __MODULE__,
-        node_id,
+        %{node_id: node_id, pid: pid},
         name: Utils.get_process_name(__MODULE__, node_id)
       )
       end
     )
   end
 
-  def init(node_id) do
+  def init(%{node_id: node_id, pid: pid}) do
     children = [
       {Timer, %{node_id: node_id, pid: self()}}
     ]
@@ -42,7 +41,8 @@ defmodule D3flSimulator.JobTilesExecutor do
 
     {:ok,
     %State{
-      node_id: node_id
+      node_id: node_id,
+      from_pid: pid
     }}
   end
 
@@ -53,11 +53,12 @@ defmodule D3flSimulator.JobTilesExecutor do
     )
   end
 
-  def queue_out(job_tile_queue) do
+  def queue_out(job_tile_queue, node_id, pid) do
     case :queue.len(job_tile_queue) do
       0 -> {{:value,
             %JobTile{
               task: fn -> IO.puts("executor is empty")
+                    send(pid, {:queue_empty, node_id})
                     {:ok, nil}
                     end,
               wall_clock_time_span: 10_000,
@@ -79,20 +80,20 @@ defmodule D3flSimulator.JobTilesExecutor do
   end
 
   def exec(node_index) do
-    GenServer.call(
+    GenServer.cast(
       Utils.get_process_name(__MODULE__, node_index),
-      :exec,
-      60_000
+      :exec
     )
   end
 
   def exec_in_loop(%State{
                       node_id: node_id,
                       job_tile_queue: queue,
-                      sim_wall_clock_rate: time_rate
+                      sim_wall_clock_rate: time_rate,
+                      from_pid: pid
                     } = state) do
 
-    {{:value, jobtile}, queue} = queue_out(queue)
+    {{:value, jobtile}, queue} = queue_out(queue, node_id, pid)
 
     %JobTile{
       task: task,
@@ -126,9 +127,9 @@ defmodule D3flSimulator.JobTilesExecutor do
     {:reply, :ok, %State{state | job_tile_queue: queue}}
   end
 
-  def handle_call(:exec, _from, state) do
+  def handle_cast(:exec, state) do
     exec_in_loop(state)
     # 現状では無限ループになっているが，job_tiles_queueが空になったらおわってもいい？
-    {:reply, :ok, state}
+    {:noreply, state}
   end
 end
