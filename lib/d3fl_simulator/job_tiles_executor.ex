@@ -53,22 +53,22 @@ defmodule D3flSimulator.JobTilesExecutor do
     )
   end
 
-  def queue_out(job_tile_queue, node_id, pid) do
-    case :queue.len(job_tile_queue) do
-      0 -> {{:value,
-            %JobTile{
-              task: fn -> IO.puts("executor is empty")
-                    send(pid, {:queue_empty, node_id})
-                    {:end, nil}
-                    end,
-              wall_clock_time_span: 10_000,
-              wait_time_out: 5_000
-              }
-            },
-            job_tile_queue}
-      _ -> :queue.out(job_tile_queue)
-    end
-  end
+  # def queue_out(job_tile_queue, node_id, pid) do
+  #   case :queue.len(job_tile_queue) do
+  #     0 -> {{:value,
+  #           %JobTile{
+  #             task: fn -> IO.puts("executor is empty")
+  #                   send(pid, {:queue_empty, node_id})
+  #                   {:end, nil}
+  #                   end,
+  #             wall_clock_time_span: 10_000,
+  #             wait_time_out: 5_000
+  #             }
+  #           },
+  #           job_tile_queue}
+  #     _ -> :queue.out(job_tile_queue)
+  #   end
+  # end
 
   defp wait_timer_message do
     receive do
@@ -93,35 +93,33 @@ defmodule D3flSimulator.JobTilesExecutor do
                       from_pid: pid
                     } = state) do
 
-    {{:value, jobtile}, queue} = queue_out(queue, node_id, pid)
+    case :queue.out(queue) do
+      {{:value, jobtile}, queue} ->
+        %JobTile{
+          task: task,
+          feasible_start_time: _f_start_time, # TODO: use this
+          dependent_task_list: _task_list, # TODO: use this
+          wall_clock_time_span: wc_span,
+          wait_time_out: _w_time_out # TODO: use this
+        } = jobtile
 
-    %JobTile{
-      task: task,
-      feasible_start_time: _f_start_time, # TODO: use this
-      dependent_task_list: _task_list, # TODO: use this
-      wall_clock_time_span: wc_span,
-      wait_time_out: _w_time_out # TODO: use this
-    } = jobtile
+        Timer.start_timer(node_id, wc_span, time_rate)
+        #TODO: task_list が空になったら...のロジックの整備．このままだと無理
+        result = task.() # exec task
 
-    Timer.start_timer(node_id, wc_span, time_rate)
+        #TODO: task はほとんどGenserver.callにする．
+        # 理由は，うまくいったか行かないかを知り，タイムアウトも作動させたいから
+        case result do
+          {:ok, _response} ->
+            wait_timer_message()
+            exec_in_loop(%State{state | job_tile_queue: queue})
+          {:error, reason} ->
+            IO.puts("Error from server: #{reason}")
+        end
 
-    #TODO: task_list が空になったら...のロジックの整備．このままだと無理
-    result = task.() # exec task
-
-    #TODO: task はほとんどGenserver.callにする．
-    # 理由は，うまくいったか行かないかを知り，タイムアウトも作動させたいから
-    case result do
-      {:ok, _response} ->
-        wait_timer_message()
-        exec_in_loop(%State{state | job_tile_queue: queue})
-      {:end, _} ->
-        wait_timer_message()
-        IO.puts("empty queue end job tiles executor")
-      {:error, reason} ->
-        IO.puts("Error from server: #{reason}")
+      {:empty, _ } ->
+        send(pid, {:queue_empty, node_id})
     end
-
-
   end
 
   def handle_call({:init_job_tile_queue, queue}, _from, state) do
