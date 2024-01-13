@@ -71,6 +71,13 @@ defmodule NxSample do
       |> Axon.Loop.metric(:accuracy)
       |> Axon.Loop.run(test_data, trained_model_state, compiler: EXLA)
 
-   {trained_model_state, evaluate}
+
+      %{
+        0 => %{
+          "accuracy" => accuracy
+        }
+      } = evaluate
+      accuracy = Nx.to_number(accuracy)
+   {trained_model_state, accuracy}
   end
 end
