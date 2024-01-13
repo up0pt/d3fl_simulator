@@ -111,7 +111,6 @@ defmodule D3flSimulator.JobTilesExecutor do
 
   def handle_cast(:exec, state) do
     exec_in_loop(state)
-    # 現状では無限ループになっているが，job_tiles_queueが空になったらおわってもいい？
     {:noreply, state}
   end
 end
