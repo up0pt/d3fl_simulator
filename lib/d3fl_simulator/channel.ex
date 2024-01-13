@@ -58,7 +58,7 @@ defmodule D3flSimulator.Channel do
                           packetloss: packetloss
                         }
                         } = _state) do
-    Process.sleep(latency) # sleep for latency (in millisecond)
+    # Process.sleep(latency) # sleep for latency (in millisecond)
     new_model = loss_packet(packetloss, sending_model)
     CalculatorNode.recv_model(to_node_index, from_node_index, new_model)
   end

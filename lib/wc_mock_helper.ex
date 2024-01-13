@@ -41,6 +41,7 @@ defmodule WcMockHelper do
     Channel.start_link({0, %InputQoS{send_node_id: 1, recv_node_id: 2, latency: 0, packetloss: 1}})
     Channel.start_link({1, %InputQoS{send_node_id: 3, recv_node_id: 2, latency: 0}})
     Channel.start_link({2, %InputQoS{send_node_id: 2, recv_node_id: 1, latency: 0}})
+    Channel.start_link({2, %InputQoS{send_node_id: 2, recv_node_id: 3, latency: 0}})
 
     jt_q_1 = init_q_list(
       [
@@ -65,6 +66,26 @@ defmodule WcMockHelper do
           feasible_start_time: 0.0,
           wall_clock_time_span: 3,
           wait_time_out: 5_000
+        },
+        %JobTile{
+          task: fn _ -> CalculatorNode.send_model_via_ch(1, 2)
+                {:ok, nil}
+                end,
+          feasible_start_time: 0.0,
+          wall_clock_time_span: 4,
+          wait_time_out: 5_000
+        },
+        %JobTile{
+          task: fn time -> CalculatorNode.train(1, time) end,
+          feasible_start_time: 0.0,
+          wall_clock_time_span: 20_000,
+          wait_time_out: 5_000
+        },
+        %JobTile{
+          task: fn time -> CalculatorNode.train(1, time) end,
+          feasible_start_time: 0.0,
+          wall_clock_time_span: 20_000,
+          wait_time_out: 5_000
         }
       ]
     )
@@ -78,11 +99,31 @@ defmodule WcMockHelper do
           wait_time_out: 5_000
         },
         %JobTile{
+          task: fn _ -> CalculatorNode.send_model_via_ch(2, 1)
+                {:ok, nil}
+                end,
+          feasible_start_time: 0.0,
+          wall_clock_time_span: 4,
+          wait_time_out: 5_000
+        },
+        %JobTile{
           task: fn _ -> IO.puts("node 2 task 2")
                 {:ok, nil}
                 end,
           feasible_start_time: 0.0,
           wall_clock_time_span: 3,
+          wait_time_out: 5_000
+        },
+        %JobTile{
+          task: fn time -> CalculatorNode.train(2, time) end,
+          feasible_start_time: 0.0,
+          wall_clock_time_span: 20_000,
+          wait_time_out: 5_000
+        },
+        %JobTile{
+          task: fn time -> CalculatorNode.train(2, time) end,
+          feasible_start_time: 0.0,
+          wall_clock_time_span: 20_000,
           wait_time_out: 5_000
         }
       ]
@@ -103,7 +144,21 @@ defmodule WcMockHelper do
           feasible_start_time: 0.0,
           wall_clock_time_span: 3,
           wait_time_out: 5_000
-        }
+        },
+        %JobTile{
+          task: fn time -> CalculatorNode.train(3, time) end,
+          feasible_start_time: 0.0,
+          wall_clock_time_span: 20_000,
+          wait_time_out: 5_000
+        },
+        %JobTile{
+          task: fn _ -> CalculatorNode.send_model_via_ch(3, 2)
+                {:ok, nil}
+                end,
+          feasible_start_time: 0.0,
+          wall_clock_time_span: 4,
+          wait_time_out: 5_000
+        },
       ]
     )
 
