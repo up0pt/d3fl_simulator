@@ -40,7 +40,7 @@ defmodule D3flSimulator.CalculatorNode do
     opts = [strategy: :one_for_one]
     {:ok, _id} = Supervisor.start_link(children, opts)
 
-    data_file_path = Path.join(data_dir_path, "#{node_id}.csv")
+    data_file_path = Path.join(data_dir_path, "CaluculatorNode_#{node_id}.csv")
 
     {:ok,
     %State{
