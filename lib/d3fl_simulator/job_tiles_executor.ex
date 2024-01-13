@@ -53,23 +53,6 @@ defmodule D3flSimulator.JobTilesExecutor do
     )
   end
 
-  # def queue_out(job_tile_queue, node_id, pid) do
-  #   case :queue.len(job_tile_queue) do
-  #     0 -> {{:value,
-  #           %JobTile{
-  #             task: fn -> IO.puts("executor is empty")
-  #                   send(pid, {:queue_empty, node_id})
-  #                   {:end, nil}
-  #                   end,
-  #             wall_clock_time_span: 10_000,
-  #             wait_time_out: 5_000
-  #             }
-  #           },
-  #           job_tile_queue}
-  #     _ -> :queue.out(job_tile_queue)
-  #   end
-  # end
-
   defp wait_timer_message do
     receive do
       {:message, content} ->
