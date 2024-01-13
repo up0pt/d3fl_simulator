@@ -5,6 +5,7 @@ defmodule WcMockHelper do
   alias D3flSimulator.JobTilesExecutor
   alias D3flSimulator.JobTilesExecutor.JobTile
   alias D3flSimulator.WallClock
+  alias D3flSimulator.Data
 
   def init_q_list(elements) do
     queue = :queue.new
@@ -30,6 +31,8 @@ defmodule WcMockHelper do
 
   def start_mock() do
     node_num = 3
+    data_directory_path = prepare_data_directory!(node_num = 3)
+
     JobTilesExecutor.start_link(%{node_num: node_num, from_pid: self()})
     CalculatorNode.start_link(%{model: %{}, data: "b", node_index: 1})
     CalculatorNode.start_link(%{model: %{}, data: "d", node_index: 2})
@@ -111,5 +114,21 @@ defmodule WcMockHelper do
 
     Enum.each(1..3, fn i -> JobTilesExecutor.exec(i) end)
     recieve_loop(0, node_num)
+  end
+
+  defp prepare_data_directory!(node_counts) do
+    data_directory_path =
+      Application.get_env(:d3fl_simulator, :data_directory_path) ||
+        raise """
+        You have to configure :data_directory_path in config.exs
+        ex) config :ping_pong_measurer_Zenohex, :data_directory_path, "path/to/directory"
+        """
+
+    dt_string = Data.datetime_to_string(DateTime.utc_now())
+    directory_name = "date_#{dt_string}_CalculatorNode_#{node_counts}"
+    data_directory_path = Path.join(data_directory_path, directory_name)
+
+    File.mkdir_p!(data_directory_path)
+    data_directory_path
   end
 end
