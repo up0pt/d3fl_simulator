@@ -15,7 +15,8 @@ defmodule D3flSimulator.CalculatorNode do
               comm_available: true,
               recv_model_queue: :queue.new,
               former_model_queue: :queue.new,
-              eval_metrics_queue: :queue.new
+              eval_metrics_queue: :queue.new,
+              data_file_path: ""
   end
   #TODO:  計算available, 測定などを足す
 
@@ -27,18 +28,26 @@ defmodule D3flSimulator.CalculatorNode do
     )
   end
 
-  def init(%{model: model, data: data, node_index: node_id}) do
+  def init(%{
+    model: model,
+    data: data,
+    node_index: node_id,
+    data_directory_path: data_dir_path
+    }) do
     children = [
       {AiCore, %{node_index: node_id}}
     ]
     opts = [strategy: :one_for_one]
     {:ok, _id} = Supervisor.start_link(children, opts)
 
+    data_file_path = Path.join(data_dir_path, "#{node_id}.csv")
+
     {:ok,
     %State{
       node_id: node_id,
       model: model,
-      data: data
+      data: data,
+      data_file_path: data_file_path
     }}
   end
 
@@ -57,12 +66,13 @@ defmodule D3flSimulator.CalculatorNode do
     comm_avail
   end
 
-  def train(node_index) do
+  def train(node_index, new_wall_clock_time) do
     GenServer.call(
       Utils.get_process_name(__MODULE__, node_index),
-      {:train, node_index},
+      {:train, node_index, new_wall_clock_time},
       600_000
     )
+    #TODO: change to GenServer.cast ?
     {:ok, nil}
   end
 
@@ -99,6 +109,7 @@ defmodule D3flSimulator.CalculatorNode do
       {:get_info})
   end
 
+
   def handle_call({:get_info}, _from, %State{recv_model_queue: _recv_queue} = state) do
     {:reply, state, state}
   end
@@ -114,13 +125,14 @@ defmodule D3flSimulator.CalculatorNode do
   #   {:reply, :ok, %State{state | recv_model_queue: new_queue}}
   # end
 
-  def handle_call({:train, node_index},
+  def handle_call({:train, node_index, new_wall_clock_time},
                   _from,
                   %State{
                     model: former_model,
                     former_model_queue: fmodel_queue,
                     recv_model_queue: rmodel_queue,
-                    eval_metrics_queue: eval_queue
+                    eval_metrics_queue: eval_queue,
+                    data_file_path: file_path
                     } = state) do
 
     new_fmodel_queue = :queue.in(former_model, fmodel_queue)
@@ -130,6 +142,10 @@ defmodule D3flSimulator.CalculatorNode do
     # TODO: AiCore(weighted_mean_model) に rmodel_queue 全体を渡した方がいい．
     {new_model, metrics}= AiCore.train_model(node_index, base_model)
     new_eval_metrics_queue = :queue.in(metrics, eval_queue)
+
+    {:ok, fp} = File.open(file_path, [:append, :utf8])
+    IO.write(fp, "#{new_wall_clock_time}, #{metrics}\n")
+    File.close fp
 
     {:reply,
      :ok,

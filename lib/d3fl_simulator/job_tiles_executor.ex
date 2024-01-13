@@ -72,6 +72,7 @@ defmodule D3flSimulator.JobTilesExecutor do
   def exec_in_loop(%State{
                       node_id: node_id,
                       job_tile_queue: queue,
+                      wall_clock_time: w_time,
                       sim_wall_clock_rate: time_rate,
                       from_pid: pid
                     } = state) do
@@ -86,16 +87,18 @@ defmodule D3flSimulator.JobTilesExecutor do
           wait_time_out: _w_time_out # TODO: use this
         } = jobtile
 
+        new_wall_clock_time = w_time + wc_span
+
         Timer.start_timer(node_id, wc_span, time_rate)
         #TODO: task_list が空になったら...のロジックの整備．このままだと無理
-        result = task.() # exec task
+        result = task.(new_wall_clock_time) # exec task
 
         #TODO: task はほとんどGenserver.callにする．
         # 理由は，うまくいったか行かないかを知り，タイムアウトも作動させたいから
         case result do
           {:ok, _response} ->
             wait_timer_message()
-            exec_in_loop(%State{state | job_tile_queue: queue})
+            exec_in_loop(%State{state | job_tile_queue: queue, wall_clock_time: new_wall_clock_time})
           {:error, reason} ->
             IO.puts("Error from server: #{reason}")
         end
