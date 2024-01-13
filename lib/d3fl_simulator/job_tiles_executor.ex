@@ -59,7 +59,7 @@ defmodule D3flSimulator.JobTilesExecutor do
             %JobTile{
               task: fn -> IO.puts("executor is empty")
                     send(pid, {:queue_empty, node_id})
-                    {:ok, nil}
+                    {:end, nil}
                     end,
               wall_clock_time_span: 10_000,
               wait_time_out: 5_000
@@ -70,10 +70,10 @@ defmodule D3flSimulator.JobTilesExecutor do
     end
   end
 
-  defp wait_message do
+  defp wait_timer_message do
     receive do
       {:message, content} ->
-        IO.puts("\n Received message: #{content}")
+        nil
       {:other_message} ->
         IO.puts("\n Received other message")
     end
@@ -111,16 +111,17 @@ defmodule D3flSimulator.JobTilesExecutor do
     #TODO: task はほとんどGenserver.callにする．
     # 理由は，うまくいったか行かないかを知り，タイムアウトも作動させたいから
     case result do
-      {:ok, _response} -> nil
+      {:ok, _response} ->
+        wait_timer_message()
+        exec_in_loop(%State{state | job_tile_queue: queue})
+      {:end, _} ->
+        wait_timer_message()
+        IO.puts("empty queue end job tiles executor")
       {:error, reason} ->
         IO.puts("Error from server: #{reason}")
     end
 
-    wait_message()
 
-    exec_in_loop(%State{state |
-      job_tile_queue: queue
-    })
   end
 
   def handle_call({:init_job_tile_queue, queue}, _from, state) do
