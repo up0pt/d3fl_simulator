@@ -4,7 +4,6 @@ defmodule WcMockHelper do
   alias D3flSimulator.CalculatorNode
   alias D3flSimulator.JobTilesExecutor
   alias D3flSimulator.JobTilesExecutor.JobTile
-  alias D3flSimulator.WallClock
   alias D3flSimulator.Data
 
   def init_q_list(elements) do
@@ -29,9 +28,13 @@ defmodule WcMockHelper do
     IO.puts("\n all queues are empty")
   end
 
+  def list_dup(list, times) do
+    Enum.reduce(1..times, list, fn _, acc -> acc ++ list end)
+  end
+
   def start_mock() do
     node_num = 3
-    data_directory_path = prepare_data_directory!(node_num = 3)
+    data_directory_path = prepare_data_directory!(node_num)
 
     JobTilesExecutor.start_link(%{node_num: node_num, from_pid: self()})
     CalculatorNode.start_link(%{model: %{}, data: "b", node_index: 1, data_directory_path: data_directory_path})
@@ -44,122 +47,113 @@ defmodule WcMockHelper do
     Channel.start_link({2, %InputQoS{send_node_id: 2, recv_node_id: 3, latency: 0}})
 
     jt_q_1 = init_q_list(
-      [
-        %JobTile{
-          task: fn _ -> IO.puts("node 1 task 1")
-                {:ok, nil}
-                end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 3,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn time -> CalculatorNode.train(1, time) end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 20_000,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn _ -> IO.puts("node 1 task 3")
-                {:ok, nil}
-                end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 3,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn _ -> CalculatorNode.send_model_via_ch(1, 2)
-                {:ok, nil}
-                end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 4,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn time -> CalculatorNode.train(1, time) end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 20_000,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn time -> CalculatorNode.train(1, time) end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 20_000,
-          wait_time_out: 5_000
-        }
-      ]
+      list_dup(
+        [
+          %JobTile{
+            task: fn _ -> IO.puts("node 1 do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 100,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn time -> CalculatorNode.train(1, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> IO.puts("node 1 do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 100,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> CalculatorNode.send_model_via_ch(1, 2)
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 4,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn time -> CalculatorNode.train(1, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          }
+        ], 5)
     )
 
     jt_q_2 = init_q_list(
-      [
-        %JobTile{
-          task: fn time -> CalculatorNode.train(2, time) end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 20_000,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn _ -> CalculatorNode.send_model_via_ch(2, 1)
-                {:ok, nil}
-                end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 4,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn _ -> IO.puts("node 2 task 2")
-                {:ok, nil}
-                end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 3,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn time -> CalculatorNode.train(2, time) end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 20_000,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn time -> CalculatorNode.train(2, time) end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 20_000,
-          wait_time_out: 5_000
-        }
-      ]
+      list_dup(
+        [
+          %JobTile{
+            task: fn time -> CalculatorNode.train(2, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> CalculatorNode.send_model_via_ch(2, 1)
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 4,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> IO.puts("node 2 do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 100,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn time -> CalculatorNode.train(2, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          }
+        ], 5)
     )
 
     jt_q_3 = init_q_list(
-      [
-        %JobTile{
-          task: fn time -> CalculatorNode.train(3, time) end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 20_000,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn _ -> IO.puts("node 3 task 2")
-                {:ok, nil}
-                end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 3,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn time -> CalculatorNode.train(3, time) end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 20_000,
-          wait_time_out: 5_000
-        },
-        %JobTile{
-          task: fn _ -> CalculatorNode.send_model_via_ch(3, 2)
-                {:ok, nil}
-                end,
-          feasible_start_time: 0.0,
-          wall_clock_time_span: 4,
-          wait_time_out: 5_000
-        },
-      ]
+      list_dup(
+        [
+          %JobTile{
+            task: fn time -> CalculatorNode.train(3, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> IO.puts("node 3 do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 3,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn time -> CalculatorNode.train(3, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> CalculatorNode.send_model_via_ch(3, 2)
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 4,
+            wait_time_out: 5_000
+          }
+        ], 5)
     )
 
     JobTilesExecutor.init_job_tile_queue(%{node_id: 1, job_tile_queue: jt_q_1})

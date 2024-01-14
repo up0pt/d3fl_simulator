@@ -54,7 +54,7 @@ defmodule D3flSimulator.Channel do
                       sending_model,
                       %State{
                         inputQoS: %InputQoS{
-                          latency: latency,
+                          latency: _latency,
                           packetloss: packetloss
                         }
                         } = _state) do

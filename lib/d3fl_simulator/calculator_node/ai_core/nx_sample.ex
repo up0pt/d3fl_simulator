@@ -39,7 +39,7 @@ defmodule NxSample do
     trained_model_state
     = model
       |> Axon.Loop.trainer(:categorical_cross_entropy, :adam)
-      |> Axon.Loop.run(train_data, former_model, compiler: EXLA, epochs: 2)
+      |> Axon.Loop.run(train_data, former_model, compiler: EXLA, epochs: 1)
 
     {test_images, test_labels} = Scidata.MNIST.download_test()
 

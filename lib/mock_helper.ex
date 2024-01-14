@@ -15,9 +15,9 @@ defmodule MockHelper do
     Channel.start_link({1, %InputQoS{send_node_id: 3, recv_node_id: 2, latency: 0}})
     Channel.start_link({2, %InputQoS{send_node_id: 2, recv_node_id: 1, latency: 0}})
 
-    CalculatorNode.train(1)
-    CalculatorNode.train(2)
-    CalculatorNode.train(3)
+    CalculatorNode.train(1, 0)
+    CalculatorNode.train(2, 0)
+    CalculatorNode.train(3, 0)
     Process.sleep(10000)
 
 
@@ -28,9 +28,9 @@ defmodule MockHelper do
     CalculatorNode.send_model_via_ch(2, 1)
     Process.sleep(10000)
 
-    CalculatorNode.train(1)
-    CalculatorNode.train(2)
-    CalculatorNode.train(3)
+    CalculatorNode.train(1, 20_000)
+    CalculatorNode.train(2, 20_000)
+    CalculatorNode.train(3, 20_000)
     Process.sleep(10000)
 
     CalculatorNode.send_model_via_ch(1, 2)

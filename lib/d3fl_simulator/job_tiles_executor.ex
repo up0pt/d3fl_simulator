@@ -55,7 +55,7 @@ defmodule D3flSimulator.JobTilesExecutor do
 
   defp wait_timer_message do
     receive do
-      {:message, content} ->
+      {:message, _content} ->
         nil
       {:other_message} ->
         IO.puts("\n Received other message")
