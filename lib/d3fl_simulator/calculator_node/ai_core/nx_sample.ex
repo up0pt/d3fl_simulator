@@ -1,7 +1,9 @@
 defmodule NxSample do
   require Axon
   def train(former_model \\ %{}) do
-    {images, labels} = Scidata.MNIST.download()
+    # {images, labels} = Scidata.MNIST.download()
+    labels = {Dataset.train_label(:mnist), {:u, 8}, {60000}}
+    images = {Dataset.train_image(:mnist), {:u, 8}, {60000, 1, 28, 28}}
 
     {images_data, images_type, images_shape} = images
 
@@ -41,7 +43,10 @@ defmodule NxSample do
       |> Axon.Loop.trainer(:categorical_cross_entropy, :adam)
       |> Axon.Loop.run(train_data, former_model, compiler: EXLA, epochs: 1)
 
-    {test_images, test_labels} = Scidata.MNIST.download_test()
+    # {test_images, test_labels} = Scidata.MNIST.download_test()
+
+    test_labels = {Dataset.test_label(:mnist), {:u, 8}, {10_000}}
+    test_images = {Dataset.test_image(:mnist), {:u, 8}, {10_000, 1, 28, 28}}
 
     {t_images_data, t_images_type, t_images_shape} = test_images
 
