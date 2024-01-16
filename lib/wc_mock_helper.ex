@@ -32,6 +32,72 @@ defmodule WcMockHelper do
     Enum.reduce(1..times, list, fn _, acc -> acc ++ list end)
   end
 
+  def q_list_plus_minus_1(node_id) do
+    jt_q = init_q_list(
+      list_dup(
+        [
+          %JobTile{
+            task: fn _ -> IO.puts("node #{node_id} do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 100,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn time -> CalculatorNode.train(node_id, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> IO.puts("node #{node_id} do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 100,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> CalculatorNode.send_model_via_ch(node_id, node_id + 1)
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 4,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn time -> CalculatorNode.train(node_id, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> CalculatorNode.send_model_via_ch(node_id, node_id - 1)
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 4,
+            wait_time_out: 5_000
+          }
+        ], 5)
+    )
+    jt_q
+  end
+
+  def num_mock(node_num) do
+    data_directory_path = prepare_data_directory!(node_num)
+
+    JobTilesExecutor.start_link(%{node_num: node_num, from_pid: self()})
+    Enum.each(1..node_num, fn num -> CalculatorNode.start_link(%{model: %{}, data: "#{num}", node_index: num, data_directory_path: data_directory_path}) end)
+    Enum.each(1..node_num-1, fn num -> Channel.start_link({num, %InputQoS{send_node_id: num, recv_node_id: num+1, latency: 0, packetloss: 0.5}}) end)
+    Enum.each(2..node_num, fn num -> Channel.start_link({num, %InputQoS{send_node_id: num, recv_node_id: num-1, latency: 0, packetloss: 0.5}}) end)
+
+    Enum.each(2..node_num-1, fn num -> JobTilesExecutor.init_job_tile_queue(%{node_id: num, job_tile_queue: q_list_plus_minus_1(num)}) end)
+    Enum.each(1..node_num, fn i -> JobTilesExecutor.exec(i) end)
+    recieve_loop(0, node_num)
+  end
+
   def start_mock() do
     node_num = 3
     data_directory_path = prepare_data_directory!(node_num)
@@ -41,10 +107,10 @@ defmodule WcMockHelper do
     CalculatorNode.start_link(%{model: %{}, data: "d", node_index: 2, data_directory_path: data_directory_path})
     CalculatorNode.start_link(%{model: %{}, data: "f", node_index: 3, data_directory_path: data_directory_path})
 
-    Channel.start_link({0, %InputQoS{send_node_id: 1, recv_node_id: 2, latency: 0, packetloss: 1}})
-    Channel.start_link({1, %InputQoS{send_node_id: 3, recv_node_id: 2, latency: 0}})
-    Channel.start_link({2, %InputQoS{send_node_id: 2, recv_node_id: 1, latency: 0}})
-    Channel.start_link({2, %InputQoS{send_node_id: 2, recv_node_id: 3, latency: 0}})
+    Channel.start_link({0, %InputQoS{send_node_id: 1, recv_node_id: 2, latency: 0, packetloss: 0.5}})
+    Channel.start_link({1, %InputQoS{send_node_id: 3, recv_node_id: 2, latency: 0, packetloss: 0}})
+    Channel.start_link({2, %InputQoS{send_node_id: 2, recv_node_id: 1, latency: 0, packetloss: 0.5}})
+    Channel.start_link({2, %InputQoS{send_node_id: 2, recv_node_id: 3, latency: 0, packetloss: 0.5}})
 
     jt_q_1 = init_q_list(
       list_dup(
@@ -87,6 +153,7 @@ defmodule WcMockHelper do
           }
         ], 5)
     )
+
 
     jt_q_2 = init_q_list(
       list_dup(
