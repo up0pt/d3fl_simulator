@@ -24,7 +24,8 @@ defmodule D3flSimulator.MixProject do
       {:axon, "~> 0.6", github:  "elixir-nx/axon"},
       {:exla, "~> 0.6", github:  "elixir-nx/exla", sparse:  "exla", override: true},
       {:nx, "~> 0.6", github:  "elixir-nx/nx", sparse:  "nx", override:  true},
-      {:scidata, "~> 0.1.11"}
+      {:scidata, "~> 0.1.11"},
+      {:flow, "~> 1.2.4"}
 
 
       # {:dep_from_hexpm, "~> 0.3.0"},
