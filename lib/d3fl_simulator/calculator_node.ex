@@ -61,7 +61,7 @@ defmodule D3flSimulator.CalculatorNode do
       fn cn_send_learn_list
       ->
         {node_id, init_model, send_learn_list} = cn_send_learn_list
-        AiCore.start_link(node_id, init_model)
+        AiCore.start_link(%{node_id: node_id, init_model: init_model})
         exec_list(node_id, send_learn_list)
       end
       )
@@ -86,34 +86,38 @@ defmodule D3flSimulator.CalculatorNode do
     IO.puts("Node ID: #{node_id} end")
   end
 
-  def train(node_id, send_learn_tile) do
+  def train(node_id, _send_learn_tile) do
     AiCore.train(node_id)
   end
 
   def aggregate(node_id, %Tile{depend: depend_list} = _send_learn_tile) do
-    wait_for_depend(depend_list)
-    AiCore.aggregate(node_id, depend_list)
+    agg_wait_for_depend(depend_list)
+    AiCore.aggregate(node_id)
   end
 
-  def wait_for_depend([%SendDepend{} = head | tail] = depend_list) do
-    case Process.whereis(Utils.channel_name(head)) do
+  def agg_wait_for_depend([%SendDepend{to: to_node_id} = head | tail] = _depend_list) do
+    process_name = Utils.channel_name(head)
+    case Process.whereis(process_name) do
       nil ->
         Process.sleep(500)
       pid when is_pid(pid) ->
         #TODO: get model from channel
-        # pass to agg_mode_store(model)
-        AiCore.agg_model_store()
-        wait_for_depend(tail)
+        {:reply, model} = Channel.get_model(head)
+        #TODO: pass to agg_mode_store(model)
+        #　agg用のモデル受け渡しはChannelで
+        AiCore.agg_model_store(to_node_id, model)
     end
+    agg_wait_for_depend(tail)
   end
 
-  def wait_for_depend(_) do
+  def agg_wait_for_depend(_) do
     nil
   end
 
   def send_model(_node_id, %Tile{} = send_learn_tile) do
-    %Tile{} = send_learn_tile
-    Channel.start_link()
+    %Tile{func_args: %SendDepend{} = send_args} = send_learn_tile
+    Channel.start_link(send_args)
+    Channel.get_model()
   end
 
 

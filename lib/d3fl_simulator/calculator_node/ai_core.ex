@@ -4,31 +4,34 @@ defmodule D3flSimulator.CalculatorNode.AiCore do
 
   defmodule State do
     defstruct node_id: nil,
-              calc_available: true
+              current_model: nil,
+              models_for_agg: [],
+              metadata_for_agg: []
   end
 
-  # def start_link(%{node_index: node_id} = arg_map) do
-  #   GenServer.start_link(
-  #     __MODULE__,
-  #     arg_map,
-  #     name: Utils.get_process_name(__MODULE__, node_id)
-  #   )
-  # end
+  def start_link(%{node_id: node_id} = arg_map) do
+    GenServer.start_link(
+      __MODULE__,
+      arg_map,
+      name: Utils.get_process_name(__MODULE__, node_id)
+    )
+  end
 
-  # def init(%{node_index: node_id} = _arg_map) do
-  #   {:ok,
-  #   %State{
-  #     node_id: node_id
-  #   }}
-  # end
+  def init(%{node_index: node_id, init_model: model}) do
+    {:ok,
+    %State{
+      node_id: node_id,
+      current_model: model
+    }}
+  end
 
-  # def model_aggregate(node_id, former_model, new_model, rate) do
-  #   GenServer.call(
-  #     Utils.get_process_name(__MODULE__, node_id),
-  #     {:aggregate, former_model, new_model, rate},
-  #     :infinity
-  #   )
-  # end
+  def aggregate(node_id) do
+    GenServer.call(
+      Utils.get_process_name(__MODULE__, node_id),
+      {:aggregate},
+      :infinity
+    )
+  end
 
   # def train_model(node_id, former_model) do
   #   GenServer.call(
@@ -83,12 +86,38 @@ defmodule D3flSimulator.CalculatorNode.AiCore do
   #   result_map
   # end
 
-  # def handle_call({:aggregate, former_model, new_model, rate},
-  #                 _from,
-  #                 state)  do
-  #   model = weighted_mean_model(former_model, new_model, rate)
-  #   {:reply, model, state}
-  # end
+  def agg_model(former_model, [head | tail] = model_list, tmp_model) do
+    weighted_mean_model(former_model)
+  end
+
+  def agg_model(_, [], model) do
+    model
+  end
+
+  def agg_model_store(to_node_id, model) do
+    GenServer.call(
+      Utils.get_process_name(__MODULE__, to_node_id),
+      {:model_store, model},
+      :infinity
+    )
+  end
+
+  def handle_call({:model_store, model}, _from, %State{models_for_agg: models_list} = state) do
+    #TODO: need Lock to add list concurrently?
+    models_list = [model | models_list]
+    {:reply, nil, %State{state | models_for_agg: models_list}}
+  end
+
+  def handle_call(:aggregate,
+                  _from,
+                  %State{
+                    current_model: former_model,
+                    models_for_agg: model_list,
+                    metadata_for_agg: _meatdata_list
+                  } = state)  do
+    model = agg_model(former_model, new_model, rate)
+    {:reply, model, state}
+  end
 
   # def handle_call({:train, former_model},
   #                 _from,
