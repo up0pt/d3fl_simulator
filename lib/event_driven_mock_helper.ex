@@ -11,6 +11,8 @@ defmodule EventDrivenMockHelper do
   end
 
   def start_mock_2_CNs() do
+    node_num = 2
+    data_directory_path = MockHelper.prepare_data_directory!(node_num)
     cn1_send = [
       %{send_time: 100, from: 1, to: 2, recv_time: 110, packetloss: 0},
       %{send_time: 110, from: 1, to: 2, recv_time: 130, packetloss: 0},
