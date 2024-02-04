@@ -6,180 +6,145 @@ defmodule D3flSimulator.CalculatorNode do
   alias D3flSimulator.CalculatorNode.AiCore
 
   defmodule State do
-    defstruct node_id: nil,
-              model: %{},
-              model_size: 0,
-              model_train_time: 0,
-              model_inference_time: 0,
-              data: nil,
-              comm_available: true,
-              recv_model_queue: :queue.new,
-              former_model_queue: :queue.new,
-              eval_metrics_queue: :queue.new,
-              data_file_path: ""
+    defstruct node_num: 0,
+              data_dir_path: ""
   end
-  #TODO:  計算available, 測定などを足す
 
-  def start_link(%{node_index: node_index} = args_tuple) do
+  defmodule SendDepend do
+    defstruct send_time: nil,
+              from: 0,
+              to: 0,
+              recv_time: nil,
+              packetloss: 0
+  end
+
+  defmodule Tile do
+    defstruct start_time: 0,
+              end_time: 0,
+              type: nil,
+              func_args: nil,
+              depend: nil
+  end
+
+  def start_link(args_tuple) do
     GenServer.start_link(
       __MODULE__,
-      args_tuple,
-      name: Utils.get_process_name(__MODULE__, node_index)
+      args_tuple
     )
   end
 
-  def init(%{
-    model: model,
-    data: data,
-    node_index: node_id,
-    data_directory_path: data_dir_path
+  def init(
+    %{
+      node_num: node_num,
+      data_dir_path: data_dir_path
     }) do
-    children = [
-      {AiCore, %{node_index: node_id}}
-    ]
-    opts = [strategy: :one_for_one]
-    {:ok, _id} = Supervisor.start_link(children, opts)
 
-    data_file_path = Path.join(data_dir_path, "CaluculatorNode_#{node_id}.csv")
+    # children = [
+    #   {AiCore, %{node_index: node_id}}
+    # ]
+    # opts = [strategy: :one_for_one]
+    # {:ok, _id} = Supervisor.start_link(children, opts)
+
+    # data_file_path = Path.join(data_dir_path, "CaluculatorNode_#{node_id}.csv")
 
     {:ok,
     %State{
-      node_id: node_id,
-      model: model,
-      data: data,
-      data_file_path: data_file_path
+      node_num: node_num,
+      data_dir_path: data_dir_path
     }}
   end
 
-  def queue_out(queue) do
-    case :queue.len(queue) do
-      0 -> {{:value, %{}}, queue}
-      _ -> :queue.out(queue)
+  def start_exec(cn_send_learn_lists) do
+    cn_send_learn_lists
+    |> Flow.from_enumerable(max_demand: 1, stages: Enum.count(cn_send_learn_lists))
+    |> Flow.map(
+      fn cn_send_learn_list
+      ->
+        {node_id, init_model, send_learn_list} = cn_send_learn_list
+        AiCore.start_link(node_id, init_model)
+        exec_list(node_id, send_learn_list)
+      end
+      )
+    |> Enum.to_list()
+    |> IO.puts("simulation end")
+  end
+
+  def exec_list(node_id, [%Tile{} = head | tail] = send_learn_list) when is_list(send_learn_list)do
+    %Tile{type: type} = head
+    case type do
+      :train ->
+        train(node_id, head)
+      :aggregate ->
+        aggregate(node_id, head)
+      :send ->
+        send(node_id, head)
+    end
+    exec_list(node_id, tail)
+  end
+
+  def exec_list(node_id, []) do
+    IO.puts("Node ID: #{node_id} end")
+  end
+
+  def train(node_id, send_learn_tile) do
+    AiCore.train(node_id)
+  end
+
+  def aggregate(node_id, %Tile{depend: depend_list} = _send_learn_tile) do
+    wait_for_depend(depend_list)
+    AiCore.aggregate(node_id, depend_list)
+  end
+
+  def wait_for_depend([%SendDepend{} = head | tail] = depend_list) do
+    case Process.whereis(Utils.channel_name(head)) do
+      nil ->
+        Process.sleep(500)
+      pid when is_pid(pid) ->
+        #TODO: get model from channel
+        # pass to agg_mode_store(model)
+        AiCore.agg_model_store()
+        wait_for_depend(tail)
     end
   end
 
-  def check_comm_avail(recv_node_index) do
-    comm_avail = GenServer.call(
-      Utils.get_process_name(__MODULE__, recv_node_index),
-      :check_comm_avail
-    )
-    comm_avail
+  def wait_for_depend(_) do
+    nil
   end
 
-  def train(node_index, new_wall_clock_time) do
-    GenServer.call(
-      Utils.get_process_name(__MODULE__, node_index),
-      {:train, node_index, new_wall_clock_time},
-      600_000
-    )
-    #TODO: change to GenServer.cast ?
-    {:ok, nil}
-  end
-
-  def send_model(send_node_index, recv_node_index) do
-    GenServer.call(
-      Utils.get_process_name(__MODULE__, send_node_index),
-      {:send_model, recv_node_index}
-      )
-  end
-
-  @spec send_model_via_ch(integer(), integer()) :: :ok
-  def send_model_via_ch(send_node_index, recv_node_index) do
-    GenServer.call(
-      # Utils.get_process_name_from_to("Channel", send_node_index, recv_node_index),
-      Utils.get_process_name(__MODULE__, send_node_index),
-      {:send_model_via_ch, recv_node_index}
-    )
-  end
-
-  def recv_model(to_node_index, from_node_index, model) do
-    # GenServer.call(
-    #   Utils.get_process_name(__MODULE__,to_node_index),
-    #   {:recv_model, from_node_index, model}
-    # )
-    GenServer.cast(
-      Utils.get_process_name(__MODULE__,to_node_index),
-      {:recv_model, from_node_index, model}
-    )
-  end
-
-  def get_info(node_index) do
-    GenServer.call(
-      Utils.get_process_name(__MODULE__, node_index),
-      {:get_info})
+  def send(_node_id, %Tile{} = send_learn_tile) do
+    %Tile{} = send_learn_tile
+    Channel.start_link()
   end
 
 
-  def handle_call({:get_info}, _from, %State{recv_model_queue: _recv_queue} = state) do
-    {:reply, state, state}
-  end
-
-  def handle_call(:check_comm_avail, _from, %State{comm_available: comm_avail} = state) do
-    {:reply, comm_avail, state}
-  end
-
-  # def handle_call({:recv_model, _from_node_index, model}, _from, %State{recv_model_queue: queue} = state) do
-  #   # TODO: from_node_index と model を一緒に保持させる
-  #   IO.puts("queue in model")
-  #   new_queue = :queue.in(model, queue)
-  #   {:reply, :ok, %State{state | recv_model_queue: new_queue}}
+  # def handle_cast({:train, node_index},
+  #                 %State{
+  #                   model: former_model,
+  #                   former_model_queue: fmodel_queue,
+  #                   recv_model_queue: rmodel_queue,
+  #                   eval_metrics_queue: eval_queue,
+  #                   data_file_path: file_path
+  #                   } = state) do
+  #
+  #   new_fmodel_queue = :queue.in(former_model, fmodel_queue)
+  #   # aggregationの一例
+  #   {{:value, recv_model}, rmodel_queue} = queue_out(rmodel_queue)
+  #   base_model = AiCore.weighted_mean_model(former_model, recv_model, 1)
+  #   # TODO: AiCore(weighted_mean_model) に rmodel_queue 全体を渡した方がいい．
+  #   {new_model, metrics}= AiCore.train_model(node_index, base_model)
+  #   new_eval_metrics_queue = :queue.in(metrics, eval_queue)
+  #
+  #   {:ok, fp} = File.open(file_path, [:append, :utf8])
+  #   IO.write(fp, "#{new_wall_clock_time}, #{metrics}\n")
+  #   File.close fp
+  #
+  #   {:reply,
+  #    :ok,
+  #    %State{
+  #     state | model: new_model,
+  #     former_model_queue: new_fmodel_queue,
+  #     recv_model_queue: rmodel_queue,
+  #     eval_metrics_queue: new_eval_metrics_queue},
+  #   }
   # end
-
-  def handle_call({:train, node_index, new_wall_clock_time},
-                  _from,
-                  %State{
-                    model: former_model,
-                    former_model_queue: fmodel_queue,
-                    recv_model_queue: rmodel_queue,
-                    eval_metrics_queue: eval_queue,
-                    data_file_path: file_path
-                    } = state) do
-
-    new_fmodel_queue = :queue.in(former_model, fmodel_queue)
-    # aggregationの一例
-    {{:value, recv_model}, rmodel_queue} = queue_out(rmodel_queue)
-    base_model = AiCore.weighted_mean_model(former_model, recv_model, 1)
-    # TODO: AiCore(weighted_mean_model) に rmodel_queue 全体を渡した方がいい．
-    {new_model, metrics}= AiCore.train_model(node_index, base_model)
-    new_eval_metrics_queue = :queue.in(metrics, eval_queue)
-
-    {:ok, fp} = File.open(file_path, [:append, :utf8])
-    IO.write(fp, "#{new_wall_clock_time}, #{metrics}\n")
-    File.close fp
-
-    {:reply,
-     :ok,
-     %State{
-      state | model: new_model,
-      former_model_queue: new_fmodel_queue,
-      recv_model_queue: rmodel_queue,
-      eval_metrics_queue: new_eval_metrics_queue},
-    }
-  end
-
-  def handle_call({:send_model_via_ch, recv_node_index},
-                  _from,
-                  %State{
-                    model: sending_model,
-                    node_id: send_node_index
-                    } = state) do
-
-    Channel.transfer_model(send_node_index, recv_node_index, sending_model)
-    {:reply, :ok, state}
-  end
-
-
-  def handle_cast({:send_model, recv_node_index}, %State{model: sending_model, node_id: send_node_index} = state) do
-    GenServer.cast(
-      Utils.get_process_name(__MODULE__, recv_node_index),
-      {:recv_model, send_node_index, sending_model}
-      )
-    {:noreply, state}
-  end
-
-  def handle_cast({:recv_model, _send_node_index, model}, %State{recv_model_queue: queue} = state) do
-    # TODO: from_node_index と model を一緒に保持させる
-    new_queue = :queue.in(model, queue)
-    {:noreply, %State{state | recv_model_queue: new_queue}}
-  end
 end
