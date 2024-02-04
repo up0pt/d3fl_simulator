@@ -77,7 +77,7 @@ defmodule D3flSimulator.CalculatorNode do
       :aggregate ->
         aggregate(node_id, head)
       :send ->
-        send(node_id, head)
+        send_model(node_id, head)
     end
     exec_list(node_id, tail)
   end
@@ -111,7 +111,7 @@ defmodule D3flSimulator.CalculatorNode do
     nil
   end
 
-  def send(_node_id, %Tile{} = send_learn_tile) do
+  def send_model(_node_id, %Tile{} = send_learn_tile) do
     %Tile{} = send_learn_tile
     Channel.start_link()
   end

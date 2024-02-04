@@ -6,40 +6,43 @@ defmodule D3flSimulator.Channel do
   defmodule InputQoS do
     defstruct send_node_id: 0,
               recv_node_id: 0,
-              uptime: 1_000,
-              jitter: 0,
               latency: 0,
-              max_bandwidth: 1_000,
-              packetloss: 0,
-              protocol: "sample"
+              packetloss: 0
+  end
+
+  defmodule ChannelID do
+    defstruct start_time: 0,
+              from: nil,
+              to: nil
   end
 
   defmodule State do
-    defstruct channel_index: 0,
+    defstruct channel_id: nil,
               inputQoS: nil,
-              queue: nil
+              flag: nil,
+              model: nil
   end
 
-  def start_link({_channel_index, %InputQoS{send_node_id: from_id, recv_node_id: to_id} = _inputQoS} = arg_tuples) do
+  def start_link(%{channel_id: channel_id, inputQoS: inputQoS} = arg_maps) do
     GenServer.start_link(
       __MODULE__,
-      arg_tuples,
-      name: Utils.get_process_name_from_to(__MODULE__, from_id, to_id)
+      arg_maps,
+      name: {:channel, channel_id}
       )
   end
 
-  def init({channel_index, %InputQoS{} = inputQoS}) do
-    queue = :queue.new
+  def init(%{channel_id: channel_id, inputQoS: inputQoS}) do
     {
       :ok, %State{
-        channel_index: channel_index,
+        channel_id: channel_id,
         inputQoS: inputQoS,
-        queue: queue
+        flag: nil,
+        model: nil
       }
     }
   end
 
-  def transfer_model(from_node_index, to_node_index, sending_model) do
+  def send_model() do
     GenServer.call(
       Utils.get_process_name_from_to(__MODULE__, from_node_index, to_node_index),
       {:transfer_model, from_node_index, to_node_index, sending_model}
@@ -70,13 +73,6 @@ defmodule D3flSimulator.Channel do
     else
       model
     end
-  end
-
-  def change_inputQoS(%InputQoS{send_node_id: from_node_index, recv_node_id: to_node_index} = inputQoS) do
-    GenServer.cast(
-      Utils.get_process_name_from_to(__MODULE__, from_node_index, to_node_index),
-      {:change_InputQoS, inputQoS}
-    )
   end
 
   def get_info(from_node_id, to_node_id) do
