@@ -26,6 +26,8 @@ defmodule NxSample do
     Axon.input("featurers", shape: {nil, 784})
     |> Axon.dense(128)
     |> Axon.relu()
+    |> Axon.dense(512)
+    |> Axon.relu()
     |> Axon.dense(10)
     |> Axon.softmax(name: "labels")
 

@@ -85,7 +85,116 @@ defmodule WcMockHelper do
     jt_q
   end
 
+  def q_list_plus_for_1() do
+    node_id = 1
+    jt_q = init_q_list(
+      list_dup(
+        [
+          %JobTile{
+            task: fn _ -> IO.puts("node #{node_id} do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 100,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn time -> CalculatorNode.train(node_id, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> IO.puts("node #{node_id} do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 100,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> CalculatorNode.send_model_via_ch(node_id, node_id + 1)
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 4,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn time -> CalculatorNode.train(node_id, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> IO.puts("node #{node_id} do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 4,
+            wait_time_out: 5_000
+          }
+        ], 5)
+    )
+    jt_q
+  end
+
+  def q_list_plus_for_last(last_node_id) do
+    node_id = last_node_id
+    jt_q = init_q_list(
+      list_dup(
+        [
+          %JobTile{
+            task: fn _ -> IO.puts("node #{node_id} do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 100,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn time -> CalculatorNode.train(node_id, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> IO.puts("node #{node_id} do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 100,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> IO.puts("node #{node_id} do nothing")
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 4,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn time -> CalculatorNode.train(node_id, time) end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 20_000,
+            wait_time_out: 5_000
+          },
+          %JobTile{
+            task: fn _ -> CalculatorNode.send_model_via_ch(node_id, node_id - 1)
+                  {:ok, nil}
+                  end,
+            feasible_start_time: 0.0,
+            wall_clock_time_span: 4,
+            wait_time_out: 5_000
+          }
+        ], 5)
+    )
+    jt_q
+  end
+
   def num_mock(node_num) do
+    start = System.monotonic_time(:second)
     data_directory_path = prepare_data_directory!(node_num)
 
     JobTilesExecutor.start_link(%{node_num: node_num, from_pid: self()})
@@ -94,9 +203,19 @@ defmodule WcMockHelper do
     Enum.each(2..node_num, fn num -> Channel.start_link({num, %InputQoS{send_node_id: num, recv_node_id: num-1, latency: 0, packetloss: 0.5}}) end)
 
     Enum.each(2..node_num-1, fn num -> JobTilesExecutor.init_job_tile_queue(%{node_id: num, job_tile_queue: q_list_plus_minus_1(num)}) end)
+    JobTilesExecutor.init_job_tile_queue(%{node_id: 1, job_tile_queue: q_list_plus_for_1()})
+    JobTilesExecutor.init_job_tile_queue(%{node_id: node_num, job_tile_queue: q_list_plus_for_last(node_num)})
     Enum.each(1..node_num, fn i -> JobTilesExecutor.exec(i) end)
     recieve_loop(0, node_num)
+    last_time = System.monotonic_time(:second)
+
+    IO.inspect(last_time - start)
+    time_file_path = Path.join(data_directory_path, "exec_time.csv")
+    {:ok, fp} = File.open(time_file_path, [:append, :utf8])
+    IO.write(fp, "#{last_time - start} in sec\n")
+    File.close fp
   end
+
 
   def start_mock() do
     node_num = 3
@@ -231,6 +350,7 @@ defmodule WcMockHelper do
     Enum.each(1..3, fn i -> JobTilesExecutor.exec(i) end)
     recieve_loop(0, node_num)
   end
+
 
   defp prepare_data_directory!(node_counts) do
     data_directory_path =
