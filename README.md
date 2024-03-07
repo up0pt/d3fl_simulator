@@ -2,10 +2,17 @@
 
 ## Overview
 
-D3FL Simulator provides an environment to simulate Distributed Federated Learning, a form of federated learning that doesn't rely on servers for model aggregation. This simulation environment takes into account network quality metrics such as latency and packet loss.
+D3-FL は，非中央集権型の連合学習（Decentralized Federated Learnin）のシミュレータです．
+特長は４つあります．
+- 通信品質の反映（レイテンシとパケットロス）
+- スケーラビリティ（予定）
+- 非同期な学習に対応
+- availability（可用性，各デバイスが学習に使えるか否か）を設定可能（予定）
+
+D3-FL Simulator provides an environment to simulate Decentralized Federated Learning, a form of federated learning that doesn't rely on servers for model aggregation. This simulation environment takes into account network quality metrics such as latency and packet loss.
 By incorporating considerations for network quality metrics, this environment allows for a more realistic emulation of real-world scenarios and new algorithms in federated learning.
 
-## Features
+ Features
 
 - **Decentralized Federated Learning Simulator:** Conduct Decentralized Federated Learning
 - **Network Quality Simulation:** Consider network metrics such as latency and packet loss for a more accurate simulation.
@@ -17,38 +24,56 @@ By incorporating considerations for network quality metrics, this environment al
 
 To set up and run the D3FL Simulator, follow these steps:
 
-1. **Clone the Repository:**
+0. **Install Erlang and Elixir:**
+    [公式の手順](https://elixir-lang.org/install.html)を参考にしてください．
+    以下では，バージョン管理ツール asdf を用いて Erlang と Elixir をインストールしています．
+    - Macの場合
+      ```bash
+      sudo apt update
+      sudo apt install git curl git
+      git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0
+      echo ". $HOME/.asdf/asdf.sh" >> ~/.bashrc
+      echo ". $HOME/.asdf/completions/asdf.bash" >> ~/.bashrc
+      source ~/.bashrc
 
+      sudo apt -y install build-essential autoconf m4 libncurses5-dev libwxgtk3.0-gtk3-dev libgl1-mesa-dev libglu1-mesa-dev libpng-dev libssh-dev unixodbc-dev xsltproc fop libxml2-utils libncurses-dev openjdk-11-jdk
 
-2. **Install Dependencies:**
-    - install [elixir](https://elixir-lang.org/install.html)
-    - ```bash
+      asdf plugin-add erlang https://github.com/asdf-vm/asdf-erlang.git
+      asdf plugin-add elixir https://github.com/asdf-vm/asdf-elixir.git
+        
+      asdf install erlang 26.0.2
+      asdf install elixir 1.15.4-otp-26
+    ```
+
+2. **Clone this Repository:**
+
+4. **Install Dependencies:**
+   ```bash
       cd d3fl_simulator
       mix deps.get
       ```
 
-3. **Run the Simulator Sample [WIP]:**
-   - According to your federated learning algorithm, Please rewrite lib/d3fl_simulator/calculator_node/ai_core.ex and lib/mock_helper.ex
+5. **Run the Simulator Sample:**
+   - According to your federated learning algorithm, Please rewrite lib/d3fl_simulator/calculator_node/ai_core.ex and lib/wc_mock_helper.ex
+    - ai_core.ex：
+      AICore モジュール内の関数 `model_aggregate/4, train_model/2` とそれらによって呼ばれる関数を変更してください．
+    - wc_mock_helper.ex：
+      `num_mock/1`を参考に，DFLを定義してください．
+    
    - run the following code
-    ```bash
-    iex -S mix
-    iex> MockHelper.start_mock()
-    ```
-
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `d3fl_simulator` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:d3fl_simulator, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/d3fl_simulator>.
+   サンプルの場合`WcMockHelper.num_mock(5)`では5つの計算機ノード（学習参加者の計算機に対応するノード）を動作させます．モデルの交換は５つのノードが小さい順に横一列に並んだ時，隣同士のノード間で行われます．
+   ```bash
+   iex -S mix
+   iex> WcMockHelper.num_mock(5)
+   ```
+   各ノードでの精度と wall-clock time （シミュレーション対象の時間．シミュレータの処理の所用時間ではない！）が `data/`にcsvファイルで保存されます．
+   
+   - (if necessary) run with [observer](https://www.erlang.org/doc/man/observer#start-0)
+   シミュレータの計算資源の利用状況を知るために`observer`を利用する場合のコードが以下です．計測によってシミュレーションの所要時間が遅くなります．
+   ```bash
+   iex -S mix
+   iex> :observer.start()
+   iex> WcMockHelper.num_mock(5)
+   ```
+    
 
