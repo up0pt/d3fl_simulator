@@ -35,7 +35,6 @@ To set up and run the D3FL Simulator, follow these steps:
       echo ". $HOME/.asdf/asdf.sh" >> ~/.bashrc
       echo ". $HOME/.asdf/completions/asdf.bash" >> ~/.bashrc
       source ~/.bashrc
-
       sudo apt -y install build-essential autoconf m4 libncurses5-dev libwxgtk3.0-gtk3-dev libgl1-mesa-dev libglu1-mesa-dev libpng-dev libssh-dev unixodbc-dev xsltproc fop libxml2-utils libncurses-dev openjdk-11-jdk
 
       asdf plugin-add erlang https://github.com/asdf-vm/asdf-erlang.git
@@ -43,7 +42,7 @@ To set up and run the D3FL Simulator, follow these steps:
         
       asdf install erlang 26.0.2
       asdf install elixir 1.15.4-otp-26
-    ```
+      ```
 
 2. **Clone this Repository:**
 
@@ -51,12 +50,13 @@ To set up and run the D3FL Simulator, follow these steps:
    ```bash
       cd d3fl_simulator
       mix deps.get
-      ```
+   ```
 
 5. **Run the Simulator Sample:**
    - According to your federated learning algorithm, Please rewrite lib/d3fl_simulator/calculator_node/ai_core.ex and lib/wc_mock_helper.ex
     - ai_core.ex：
       AICore モジュール内の関数 `model_aggregate/4, train_model/2` とそれらによって呼ばれる関数を変更してください．
+      特に，`ai_core/nx_sample.ex` が学習部分のコードです．
     - wc_mock_helper.ex：
       `num_mock/1`を参考に，DFLを定義してください．
     
@@ -76,4 +76,18 @@ To set up and run the D3FL Simulator, follow these steps:
    iex> WcMockHelper.num_mock(5)
    ```
     
+## ファイルの説明
+### `lib/d3fl_simulator/calculator_node.ex`
+- calculator_node は，計算機ノードを指します．これは，学習に参加する計算機（例えばスマホやサーバー，ラズパイなど）のことです．
+- DFL における 訓練 と モデル交換 の送受信を行います．
 
+### `lib/d3fl_simulator/channel.ex`
+- channel は通信チャンネルを指します．これは，計算機ノード間の通信を抽象化したものです．
+- 通信のパケットロスを反映します（現段階の実装では，レイテンシは次の`job_tiles_executor.ex`で反映しています． ）
+
+### `lib/d3fl_simulator/job_tiles_executor.ex`
+- job_tiles_executor は，各計算機ノードの 訓練 と モデル交換 のイベントを順に実行します．
+- job_tiles_executor は計算機ノードごとに１つあります．
+
+### `lib/wc_mock_helper.ex`
+- ここで，DFLを実行する関数とそれの補助関数を記述しています．
