@@ -26,3 +26,7 @@ d3fl_simulator-*.tar
 /tmp/
 
 sample*
+
+/data/
+
+/dataset/
