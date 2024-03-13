@@ -7,7 +7,7 @@ defmodule Dataset do
       't10k-images-idx3-ubyte.gz',
       't10k-labels-idx1-ubyte.gz'
     ]
-    Mix.shell().cmd("mkdir mnist")
+    File.mkdir_p("dataset/mnist")
     Enum.each(file, fn f -> get_mnist(f) end)
     :ok
   end
@@ -22,7 +22,7 @@ defmodule Dataset do
     {{_, 200, 'OK'}, _headers, body} = resp
 
     File.write!("dataset/mnist/#{file}", body)
-    Mix.shell().cmd("gzip -d mnist/#{file}")
+    Mix.shell().cmd("gzip -d dataset/mnist/#{file}")
   end
 
   def train_label(:mnist) do
