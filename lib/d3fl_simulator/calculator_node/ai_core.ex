@@ -33,7 +33,7 @@ defmodule D3flSimulator.CalculatorNode.AiCore do
   def train_model(node_id, former_model) do
     GenServer.call(
       Utils.get_process_name(__MODULE__, node_id),
-      {:train, former_model},
+      {:train, former_model, node_id},
       :infinity
     )
   end
@@ -90,10 +90,10 @@ defmodule D3flSimulator.CalculatorNode.AiCore do
     {:reply, model, state}
   end
 
-  def handle_call({:train, former_model},
+  def handle_call({:train, former_model, node_id},
                   _from,
                   state) do
-    model = NxSample.train(former_model)
+    model = NxSample.train(former_model, node_id)
     {:reply, model, state}
   end
 

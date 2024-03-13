@@ -1,6 +1,7 @@
 defmodule NxSample do
   require Axon
-  def train(former_model \\ %{}) do
+
+  def train(former_model \\ %{}, _node_id) do
     # {images, labels} = Scidata.MNIST.download()
     labels = {Dataset.train_label(:mnist), {:u, 8}, {60000}}
     images = {Dataset.train_image(:mnist), {:u, 8}, {60000, 1, 28, 28}}
