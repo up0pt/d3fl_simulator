@@ -217,7 +217,53 @@ defmodule WcMockHelper do
     File.close fp
   end
 
+  def num_mock_w_1loss(node_num) do
+    Dataset.download(:mnist)
+    start = System.monotonic_time(:second)
+    data_directory_path = prepare_data_directory!(node_num)
 
+    JobTilesExecutor.start_link(%{node_num: node_num, from_pid: self()})
+    Enum.each(1..node_num, fn num -> CalculatorNode.start_link(%{model: %{}, data: "#{num}", node_index: num, data_directory_path: data_directory_path}) end)
+    Enum.each(1..node_num-1, fn num -> Channel.start_link({num, %InputQoS{send_node_id: num, recv_node_id: num+1, latency: 0, packetloss: 1}}) end)
+    Enum.each(2..node_num, fn num -> Channel.start_link({num, %InputQoS{send_node_id: num, recv_node_id: num-1, latency: 0, packetloss: 1}}) end)
+
+    Enum.each(2..node_num-1, fn num -> JobTilesExecutor.init_job_tile_queue(%{node_id: num, job_tile_queue: q_list_plus_minus_1(num)}) end)
+    JobTilesExecutor.init_job_tile_queue(%{node_id: 1, job_tile_queue: q_list_plus_for_1()})
+    JobTilesExecutor.init_job_tile_queue(%{node_id: node_num, job_tile_queue: q_list_plus_for_last(node_num)})
+    Enum.each(1..node_num, fn i -> JobTilesExecutor.exec(i) end)
+    recieve_loop(0, node_num)
+    last_time = System.monotonic_time(:second)
+
+    IO.inspect(last_time - start)
+    time_file_path = Path.join(data_directory_path, "exec_time.csv")
+    {:ok, fp} = File.open(time_file_path, [:append, :utf8])
+    IO.write(fp, "#{last_time - start} in sec\n")
+    File.close fp
+  end
+
+  def num_mock_wo_loss(node_num) do
+    Dataset.download(:mnist)
+    start = System.monotonic_time(:second)
+    data_directory_path = prepare_data_directory!(node_num)
+
+    JobTilesExecutor.start_link(%{node_num: node_num, from_pid: self()})
+    Enum.each(1..node_num, fn num -> CalculatorNode.start_link(%{model: %{}, data: "#{num}", node_index: num, data_directory_path: data_directory_path}) end)
+    Enum.each(1..node_num-1, fn num -> Channel.start_link({num, %InputQoS{send_node_id: num, recv_node_id: num+1, latency: 0, packetloss: 0}}) end)
+    Enum.each(2..node_num, fn num -> Channel.start_link({num, %InputQoS{send_node_id: num, recv_node_id: num-1, latency: 0, packetloss: 0}}) end)
+
+    Enum.each(2..node_num-1, fn num -> JobTilesExecutor.init_job_tile_queue(%{node_id: num, job_tile_queue: q_list_plus_minus_1(num)}) end)
+    JobTilesExecutor.init_job_tile_queue(%{node_id: 1, job_tile_queue: q_list_plus_for_1()})
+    JobTilesExecutor.init_job_tile_queue(%{node_id: node_num, job_tile_queue: q_list_plus_for_last(node_num)})
+    Enum.each(1..node_num, fn i -> JobTilesExecutor.exec(i) end)
+    recieve_loop(0, node_num)
+    last_time = System.monotonic_time(:second)
+
+    IO.inspect(last_time - start)
+    time_file_path = Path.join(data_directory_path, "exec_time.csv")
+    {:ok, fp} = File.open(time_file_path, [:append, :utf8])
+    IO.write(fp, "#{last_time - start} in sec\n")
+    File.close fp
+  end
   def start_mock() do
     node_num = 3
     data_directory_path = prepare_data_directory!(node_num)
