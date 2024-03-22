@@ -1,7 +1,7 @@
 defmodule NxSample do
   require Axon
 
-  def train(former_model \\ %{}, _node_id) do
+  def train(former_model \\ %{}, node_id) do
     # {images, labels} = Scidata.MNIST.download()
     labels = {Dataset.train_label(:mnist), {:u, 8}, {60000}}
     images = {Dataset.train_image(:mnist), {:u, 8}, {60000, 1, 28, 28}}
@@ -13,7 +13,7 @@ defmodule NxSample do
       |> Nx.from_binary(images_type)
       |> Nx.reshape(images_shape)
       |> Nx.divide(255)
-      |> Nx.reshape({60_000, :auto})
+      |> Nx.reshape({60_000, :auto}, names: [:batches, :values])
 
     {labels_data, labels_type, labels_shape} = labels
 
@@ -32,9 +32,12 @@ defmodule NxSample do
     |> Axon.dense(10)
     |> Axon.softmax(name: "labels")
 
+    chunk_size = 600
+    chunked_images_tensor = images_tensor[batches: chunk_size * (node_id - 1)..(chunk_size * node_id-1)]
+    chunked_labels_tensor = labels_tensor[chunk_size * (node_id - 1)..(chunk_size * node_id-1)]
 
-    images_train_data = Nx.to_batched(images_tensor, 32)
-    labels_train_data = Nx.to_batched(labels_tensor, 32)
+    images_train_data = Nx.to_batched(chunked_images_tensor, 32)
+    labels_train_data = Nx.to_batched(chunked_labels_tensor, 32)
 
     train_data = Stream.zip(images_train_data, labels_train_data)
     train_data = Enum.map(train_data, fn {images_tensor, labels_tensor} ->
