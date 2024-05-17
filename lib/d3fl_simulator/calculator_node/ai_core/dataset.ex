@@ -1,14 +1,14 @@
 defmodule Dataset do
   def download(:mnist) do
     Application.ensure_all_started(:inets)
-    file = [
-      'train-images-idx3-ubyte.gz',
-      'train-labels-idx1-ubyte.gz',
-      't10k-images-idx3-ubyte.gz',
-      't10k-labels-idx1-ubyte.gz'
-    ]
-    File.mkdir_p("dataset/mnist")
-    Enum.each(file, fn f -> get_mnist(f) end)
+    #file = [
+    #  'train-images-idx3-ubyte.gz',
+    #  'train-labels-idx1-ubyte.gz',
+    #  't10k-images-idx3-ubyte.gz',
+    #  't10k-labels-idx1-ubyte.gz'
+    #]
+    #File.mkdir_p("dataset/mnist")
+    #Enum.each(file, fn f -> get_mnist(f) end)
     :ok
   end
 
