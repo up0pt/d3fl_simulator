@@ -52,3 +52,16 @@ Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_do
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at <https://hexdocs.pm/d3fl_simulator>.
 
+
+### ~/.bashrc
+
+. /home/kosuke/.asdf/asdf.sh
+. /home/kosuke/.asdf/completions/asdf.bash
+
+export PATH=/usr/local/cuda-12.3/bin:$PATH
+export CUDA_PATH=/usr/local/cuda
+export LD_LIBRARY_PATH=/usr/local/cuda-12.3/lib64:$LD_LIBRARY_PATH
+
+export XLA_TARGET=cuda111
+export XLA_FLAGS="--xla_gpu_cuda_data_dir=/usr/local/cuda-12.3"
+export XLA_FLAGS=--xla_gpu_force_compilation_parallelism=1
