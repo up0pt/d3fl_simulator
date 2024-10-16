@@ -194,7 +194,8 @@ defmodule WcMockHelper do
   end
 
   def num_mock(node_num) do
-    Dataset.download(:mnist)
+    # Dataset.download(:mnist)
+    # Can't acess the mnist dataset
     start = System.monotonic_time(:second)
     data_directory_path = prepare_data_directory!(node_num)
 
